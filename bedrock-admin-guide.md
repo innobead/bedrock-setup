@@ -19,6 +19,10 @@
 | [Part 1: One-time account setup](#part-1-one-time-account-setup) | Admin | Once per AWS account, ~20 min |
 | [Part 2: Managing your engineers](#part-2-managing-your-engineers) | Admin | Per engineer, ~1 min |
 
+**Order:** complete Part 1 (Steps 1.1 to 1.5, in order) before onboarding anyone. Engineers can
+only start the [user guide](bedrock-user-guide.md) after you have onboarded them and sent them
+their details (Part 2).
+
 ---
 
 ## Part 1: One-time account setup

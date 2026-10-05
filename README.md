@@ -12,6 +12,20 @@ everyone is unpaused automatically on the 1st of the month.
 | The **admin** of an AWS account: you set up the account and onboard engineers | [Admin guide](bedrock-admin-guide.md) |
 | Reviewing **how and why** it works (IT, security, finance) | [Design and mechanism](bedrock-design.md) |
 
+## Getting started
+
+Setup happens in this order. **Engineers cannot start until their admin has finished steps 1 and 2.**
+
+| Step | Who | What | Guide | How often |
+|---|---|---|---|---|
+| 1 | Admin | Set up the AWS account: cost export, pause policy, Budgets role, monthly auto-unpause | [Admin guide, Part 1](bedrock-admin-guide.md#part-1-one-time-account-setup) | Once per account, about 20 minutes |
+| 2 | Admin | Onboard each engineer: personal role, budget and automatic pause. Send them their `role_arn` and `role_session_name` | [Admin guide, Part 2](bedrock-admin-guide.md#onboard-an-engineer) | Once per engineer, about 1 minute |
+| 3 | Engineer | Set up the AWS profile and Claude Code | [User guide](bedrock-user-guide.md) | Once per computer, about 5 minutes |
+| 4 | Admin | Check for Bedrock usage outside personal roles | [Admin guide, Part 2](bedrock-admin-guide.md#find-who-isnt-using-their-personal-role) | Monthly |
+
+Billing data runs about a day behind. An engineer's spend appears in their budget about a day after
+their first Bedrock call, and the first cost export arrives within 24 hours of step 1.
+
 ## How it works
 
 ```

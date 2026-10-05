@@ -3,6 +3,10 @@
 > **Version 1.0 (2026-10-05).** For engineers who use Claude and other models through Amazon
 > Bedrock. Setup takes about 5 minutes.
 
+> **Before you begin:** your admin must first set up the AWS account and onboard you. When that is
+> done, they send you your `role_arn` and `role_session_name`. If you haven't received them, ask
+> your admin. Until then, the setup below fails with `AccessDenied`.
+
 ## How it works
 
 - You use Bedrock through a **personal AWS role** that only you can use, from your SSO login.
