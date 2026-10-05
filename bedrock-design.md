@@ -1,4 +1,4 @@
-# Amazon Bedrock Usage Guideline
+# Amazon Bedrock: Design and Mechanism
 
 > **Status: DRAFT v0.3 (2026-10-03).** Sections marked ✅ were tested in account `111122223333`.
 > Sections marked ⏳ are waiting on a test or on IT, and sections marked 📝 are not written yet.

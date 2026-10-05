@@ -3,7 +3,7 @@
 > **Status: v0.2 (2026-10-05).** For **admins**: the owners of an AWS account
 > where engineers use Bedrock. You set up the account once (Part 1) and then onboard engineers
 > (Part 2). Nothing in this guide needs central IT. Engineers follow the [user guide](bedrock-user-guide.md). The design
-> and test results are in [bedrock-guideline.md](bedrock-guideline.md).
+> and test results are in [bedrock-design.md](bedrock-design.md).
 > ✅ = tested · ⏳ = not ready yet
 
 ## How it works, in short

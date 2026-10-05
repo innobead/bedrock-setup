@@ -10,7 +10,7 @@ everyone is unpaused automatically on the 1st of the month.
 |---|---|
 | An **engineer** who wants to use Bedrock or Claude Code | [User guide](bedrock-user-guide.md) |
 | The **admin** of an AWS account: you set up the account and onboard engineers | [Admin guide](bedrock-admin-guide.md) |
-| Reviewing **how and why** it works (IT, security, finance) | [Design and mechanism](bedrock-guideline.md) |
+| Reviewing **how and why** it works (IT, security, finance) | [Design and mechanism](bedrock-design.md) |
 
 ## How it works
 
@@ -38,7 +38,7 @@ everyone is unpaused automatically on the 1st of the month.
 |---|---|
 | [`bedrock-user-guide.md`](bedrock-user-guide.md) | Engineer setup, troubleshooting, what happens when you're paused |
 | [`bedrock-admin-guide.md`](bedrock-admin-guide.md) | Part 1: one-time account setup. Part 2: onboarding and managing engineers |
-| [`bedrock-guideline.md`](bedrock-guideline.md) | Design decisions, how the pieces work, test results, open items |
+| [`bedrock-design.md`](bedrock-design.md) | Design decisions, how the pieces work, test results, open items |
 | [`scripts/bedrock-user.sh`](scripts/bedrock-user.sh) | Admin script: `onboard`, `status`, `set-limit`, `unpause`, `offboard` |
 | [`scripts/untracked-usage.sh`](scripts/untracked-usage.sh) | Admin report: who used Bedrock without their personal role |
 | [`scripts/monthly-unpause/`](scripts/monthly-unpause/) | Lambda that unpauses and re-arms everyone on the 1st |
@@ -49,7 +49,7 @@ everyone is unpaused automatically on the 1st of the month.
 Tested end to end in account `111122223333` (2026-09-30 → 2026-10-05): personal roles, per-person
 cost tags, a budget with the per-person filter, the 80% alert, the automatic pause, unpausing, and
 the monthly re-arm. Open items are listed in
-[bedrock-guideline.md §8](bedrock-guideline.md#8-open-items).
+[bedrock-design.md §8](bedrock-design.md#8-open-items).
 
 > Account IDs, names, emails, bucket names and resource IDs in this repository are **placeholders**
 > (for example account `111122223333` and `alice@example.com`). Replace them with your own values.
