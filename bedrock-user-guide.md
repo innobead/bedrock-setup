@@ -72,23 +72,31 @@ aws sts get-caller-identity --profile bedrock
 
 ### Step 4 Set up Claude Code
 
-In `~/.claude/settings.json`:
+Start Claude Code and sign in to Bedrock with the built-in wizard. No config file to edit:
 
-```json
-{
-  "env": {
-    "CLAUDE_CODE_USE_BEDROCK": "1",
-    "AWS_PROFILE": "bedrock",
-    "AWS_REGION": "us-west-2"
-  }
-}
-```
+1. Run `claude` and type `/login`. (`/setup-bedrock` opens the same wizard.)
+2. Choose **3rd-party platform → Amazon Bedrock**.
+3. When asked how to authenticate to AWS, pick the **AWS profile** `bedrock` from Step 2.
+   ⚠️ Not `default` or your SSO profile: only `bedrock` counts toward your budget.
+4. Choose region **us-west-2** and accept the suggested models.
 
-Then restart Claude Code.
+Check it with `/status`: it should show Amazon Bedrock. A test call should then appear under your
+role `bedrock-user-<name>` (your admin can confirm).
 
-- The `env` block here **overrides** your shell. Exporting a different `AWS_PROFILE` in the shell has no effect.
 - Your Bedrock role can **only** call Bedrock. For any other AWS command, add `--profile default`.
 - Credentials renew automatically. When your SSO sign-in expires, run `aws login` again.
+- To change the profile or region later, run `/login` again. (`/logout` does not apply to Bedrock.)
+
+> ⚠️ **Also use a personal Claude account?** The wizard saves to `~/.claude/settings.json`, which
+> **every** Claude Code session on your machine reads, including the Claude Mac app's Code tab. All
+> of them would then bill to the company. Keep work in its own config folder instead:
+>
+> ```bash
+> # Add to ~/.zshrc, open a new terminal, then run claude-work and do steps 1–4 there
+> alias claude-work='CLAUDE_CONFIG_DIR=~/.claude-work claude'
+> ```
+>
+> `claude-work` then uses Bedrock, and plain `claude` and the Mac app keep your personal login.
 
 ### If something goes wrong
 
@@ -96,7 +104,7 @@ Then restart Claude Code.
 |---|---|
 | `AccessDenied … sts:AssumeRole` | A `<…>` placeholder is still in `role_arn`, or `role_session_name` isn't exactly your SSO email |
 | `The config profile (default  # …) could not be found` | Move the end-of-line comment in `~/.aws/config` to its own line |
-| Claude Code uses the wrong identity | Set `AWS_PROFILE` in `~/.claude/settings.json`, then restart Claude Code |
+| Claude Code uses the wrong identity or account | Run `/login` again and pick the `bedrock` profile. Check with `/status`. |
 | `Token has expired` / SSO session expired | Run `aws login` again |
 | `AccessDeniedException … bedrock:InvokeModel` (it worked before) | You're paused. See [When you're paused](#when-youre-paused). |
 | `AccessDenied` on a non-Bedrock command | Expected. Use `--profile default`. |
