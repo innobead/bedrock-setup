@@ -40,7 +40,7 @@ everyone is unpaused automatically on the 1st of the month.
 | [`bedrock-admin-guide.md`](bedrock-admin-guide.md) | Part 1: one-time account setup. Part 2: onboarding and managing engineers |
 | [`bedrock-guideline.md`](bedrock-guideline.md) | Design decisions, how the pieces work, test results, open items |
 | [`scripts/bedrock-user.sh`](scripts/bedrock-user.sh) | Admin script: `onboard`, `status`, `set-limit`, `unpause`, `offboard` |
-| [`scripts/untracked-usage.py`](scripts/untracked-usage.py) | Admin report: who used Bedrock without their personal role |
+| [`scripts/untracked-usage.sh`](scripts/untracked-usage.sh) | Admin report: who used Bedrock without their personal role |
 | [`scripts/monthly-unpause/`](scripts/monthly-unpause/) | Lambda that unpauses and re-arms everyone on the 1st |
 | [`poc/`](poc/) | Proof-of-concept files from the original tests. Kept for reference. |
 

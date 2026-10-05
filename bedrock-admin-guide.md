@@ -259,18 +259,18 @@ them. Run this once a month, or whenever the check in [Step 1.5](#step-15-watch-
 shows untracked spend:
 
 ```bash
-pip install duckdb      # once
-scripts/untracked-usage.py <s3-export-prefix> [YYYY-MM]
+brew install duckdb     # once (Linux: see https://duckdb.org/docs/installation)
+scripts/untracked-usage.sh <s3-export-prefix> [YYYY-MM]
 
 # Example: the export from Step 1.1, current month
-scripts/untracked-usage.py s3://my-billing-bucket/cur/my-export
+scripts/untracked-usage.sh s3://my-billing-bucket/cur/my-export
 ```
 
 `<s3-export-prefix>` is the S3 bucket and path of your export from Step 1.1, ending with the export
 name. Example output:
 
 ```
-Bedrock model spend in 2026-09: tracked $0, untracked $6.43
+Bedrock model spend in 2026-09: tracked $0.00, untracked $6.43
 
 WHO                            USED VIA                                                   USD  LAST USED
 alice@example.com                 SSO role AWSAdministratorAccess                           6.17  2026-09-30
