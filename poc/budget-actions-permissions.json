@@ -1,0 +1,14 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AttachOnlyBedrockDenyToPersonalRoles",
+      "Effect": "Allow",
+      "Action": ["iam:AttachRolePolicy", "iam:DetachRolePolicy"],
+      "Resource": "arn:aws:iam::111122223333:role/bedrock-users/*",
+      "Condition": {
+        "ArnEquals": { "iam:PolicyARN": "arn:aws:iam::111122223333:policy/bedrock/bedrock-deny" }
+      }
+    }
+  ]
+}

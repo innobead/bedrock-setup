@@ -1,0 +1,25 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReverseBedrockBudgetActions",
+      "Effect": "Allow",
+      "Action": [
+        "budgets:DescribeBudgetActionsForAccount",
+        "budgets:DescribeBudgetAction",
+        "budgets:ExecuteBudgetAction"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Logs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:us-west-2:111122223333:log-group:/aws/lambda/bedrock-monthly-unpause*"
+    }
+  ]
+}

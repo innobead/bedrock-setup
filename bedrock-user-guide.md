@@ -1,0 +1,114 @@
+# Amazon Bedrock: User Guide
+
+> **Status: v0.1 (2026-10-05).** For engineers who use Claude and other models through Amazon
+> Bedrock. Setup takes about 5 minutes.
+
+## How it works
+
+- You use Bedrock through a **personal AWS role** that only you can use, from your SSO login.
+- You have a **monthly budget**. You get an email at 80%. At 100% your Bedrock access is
+  **paused** until your admin unpauses you, or until the 1st of next month.
+
+## Why use your personal role
+
+You *can* call Bedrock from other profiles, such as the `AWSAdministratorAccess` SSO login, but please don't. Those
+calls are **not anonymous**: billing still records your SSO email, and your admin sees them in
+a monthly report. What you lose is everything else:
+
+| | Personal role (`bedrock` profile) | Any other profile |
+|---|---|---|
+| Who made the call | ✅ Your email | ✅ Your email (found later in a report) |
+| Counts toward your budget | ✅ | ❌ |
+| Email at 80% of your budget | ✅ | ❌ |
+| Automatic pause at 100% | ✅ | ❌ No limit at all |
+| Cost charged to your team/product | ✅ | ❌ Shows as unallocated cost |
+| Shows up in Cost Explorer per person | ✅ Next day | ❌ Only in the monthly report |
+| What a coding agent (e.g. Claude Code) can do in AWS | Only call Bedrock | Everything that profile allows. With `AWSAdministratorAccess`, that's the whole account. |
+
+So the cost still comes back to you, but without the warning, the limit and the team allocation
+that protect you and your team. Using Bedrock from another profile is followed up by your admin.
+
+## Before you start
+
+- You can sign in to the AWS account with SSO.
+- Your admin has onboarded you and sent you your **`role_arn`** and **`role_session_name`**.
+- Your admin has your **real mailbox address** for budget emails. Your SSO login email may not
+  receive mail.
+- You have the AWS CLI v2 installed.
+
+## Setup
+
+### Step 1 Sign in with SSO
+
+```bash
+aws login                         # or: aws sso login --profile <your-sso-profile>
+aws sts get-caller-identity       # the ARN must end in /<your-sso-email>
+```
+
+> ⚠️ `aws login` reuses whatever identity your browser console is signed in as. Check the output.
+
+### Step 2 Add your Bedrock profile
+
+Add this to `~/.aws/config` and replace **every** `<…>` placeholder:
+
+```ini
+[profile bedrock]
+role_arn = arn:aws:iam::<ACCOUNT_ID>:role/bedrock-users/bedrock-user-<name>
+source_profile = default
+role_session_name = <your-sso-email>
+region = us-west-2
+```
+
+- `source_profile` is the profile you signed in with in Step 1 (`default` if you used `aws login`).
+- `role_session_name` must be **exactly** your SSO email.
+- ⚠️ Don't put comments at the end of a line. Put them on their own line, starting with `#`.
+
+### Step 3 Check it
+
+```bash
+aws sts get-caller-identity --profile bedrock
+# Expect: arn:aws:sts::<ACCOUNT_ID>:assumed-role/bedrock-user-<name>/<your-sso-email>
+```
+
+### Step 4 Set up Claude Code
+
+In `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "AWS_PROFILE": "bedrock",
+    "AWS_REGION": "us-west-2"
+  }
+}
+```
+
+Then restart Claude Code.
+
+- The `env` block here **overrides** your shell. Exporting a different `AWS_PROFILE` in the shell has no effect.
+- Your Bedrock role can **only** call Bedrock. For any other AWS command, add `--profile default`.
+- Credentials renew automatically. When your SSO sign-in expires, run `aws login` again.
+
+### If something goes wrong
+
+| You see | Fix |
+|---|---|
+| `AccessDenied … sts:AssumeRole` | A `<…>` placeholder is still in `role_arn`, or `role_session_name` isn't exactly your SSO email |
+| `The config profile (default  # …) could not be found` | Move the end-of-line comment in `~/.aws/config` to its own line |
+| Claude Code uses the wrong identity | Set `AWS_PROFILE` in `~/.claude/settings.json`, then restart Claude Code |
+| `Token has expired` / SSO session expired | Run `aws login` again |
+| `AccessDeniedException … bedrock:InvokeModel` (it worked before) | You're paused. See [When you're paused](#when-youre-paused). |
+| `AccessDenied` on a non-Bedrock command | Expected. Use `--profile default`. |
+
+---
+
+## When you're paused
+
+Bedrock calls fail with `AccessDeniedException … bedrock:InvokeModel … explicit deny`, and you get
+an email from AWS Budgets.
+
+- Ask your admin to raise your limit and unpause you. Access returns about 20 seconds later.
+- Otherwise you are unpaused automatically on the 1st of next month.
+- Don't switch to another profile (such as `AWSAdministratorAccess`) to keep working. That usage isn't
+  counted against your budget, so it can't be tracked.

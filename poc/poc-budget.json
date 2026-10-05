@@ -1,0 +1,6 @@
+{
+  "BudgetName": "poc-bedrock-alice",
+  "BudgetType": "COST",
+  "TimeUnit": "MONTHLY",
+  "BudgetLimit": { "Amount": "1", "Unit": "USD" }
+}

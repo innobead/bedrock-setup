@@ -1,0 +1,10 @@
+# Build artifacts
+*.zip
+__pycache__/
+*.pyc
+
+# Local billing data (CUR exports): never commit
+*.parquet
+cur/
+
+.DS_Store
