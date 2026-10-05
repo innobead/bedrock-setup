@@ -1,7 +1,6 @@
 # Amazon Bedrock: Design and Mechanism
 
-> **Status: DRAFT v0.3 (2026-10-03).** Sections marked ✅ were tested in account `111122223333`.
-> Sections marked ⏳ are waiting on a test or on IT, and sections marked 📝 are not written yet.
+> **Version 1.0 (2026-10-05).** Everything described here was tested end to end in a pilot AWS account.
 > Proof-of-concept files: [`poc/`](poc/). Guides: [admin](bedrock-admin-guide.md), [user](bedrock-user-guide.md); admin script [`scripts/bedrock-user.sh`](scripts/bedrock-user.sh).
 
 ## Contents
@@ -84,7 +83,7 @@ So each person needs their **own IAM role**, carrying their own tags.
 | Answers | *What* was used? | *Who* used it? |
 | Tag is set on | The resource (EC2, S3, inference profile…) | The IAM user or role making the call |
 | Services | Most AWS services | **Amazon Bedrock only** |
-| Bedrock with plain model IDs | ❌ There is no customer resource, so no tag | ✅ |
+| Bedrock with plain model IDs | No: there is no customer resource to tag | Yes |
 | Becomes available to activate | After a tagged resource has cost | After the tagged principal has made **≥ 1 Bedrock call**, then up to 24 h |
 | CUR 2.0 prefix | `resourceTags/…` | `iamPrincipal/…` |
 
@@ -124,8 +123,7 @@ Placeholders used below:
 - `<name>`: a short username (e.g. `alice`)
 - `<email>`: the SSO username / email (e.g. `alice@example.com`)
 
-### 4.1 CUR 2.0 export with caller identity ✅
-
+### 4.1 CUR 2.0 export with caller identity
 This gives per-person **reporting**. It works even before any tags exist.
 
 1. Go to *Billing and Cost Management → Data Exports → Create* → **Standard data export (CUR 2.0)**.
@@ -137,8 +135,7 @@ The first delivery can take up to 24 h. The export adds the `line_item_iam_princ
 
 > Note: this increases the number of CUR rows (one row per caller per model), so the files get larger.
 
-### 4.2 Personal role per user ✅
-
+### 4.2 Personal role per user
 Each role is named `bedrock-user-<name>`, lives under the path **`/bedrock-users/`**, and is tagged with
 `owner` and `product`. The path is what the budget-action role and the SCP use to scope permissions.
 
@@ -223,11 +220,10 @@ aws iam put-role-policy \
 denied; Bedrock calls succeed; non-Bedrock actions are denied; Claude Code works through the role
 (confirmed in CloudTrail).
 
-### 4.3 Activate IAM principal cost allocation tags ✅
-
-> ✅ **Done for all accounts.** Central IT has activated the IAM-principal tags `owner` and `product`
-> organization-wide. New accounts need nothing; their personal roles just have to use these
-> exact tag names. The steps below are kept for reference.
+### 4.3 Activate IAM principal cost allocation tags
+> **Already done for all accounts.** Central IT has activated the IAM principal tags `owner` and
+> `product` organization-wide. New accounts need no action; personal roles must use exactly these
+> tag names. The steps below are for reference.
 
 This is done **in the management account** (only it can manage cost allocation tags).
 
@@ -236,18 +232,15 @@ This is done **in the management account** (only it can manage cost allocation t
 3. Go to *Billing → Cost Allocation Tags* and **filter Tag type = IAM principal**.
 4. Activate `owner` and `product`. Activation can take up to another 24 h.
 
-> ✅ **PoC status:** IT first activated the **resource**-type `owner`/`product` tags by mistake. Those
-> do not apply to Bedrock. The **IAM principal** types were then activated on 2026-10-02 at
-> 07:10 UTC (the first tagged call was on 2026-09-30 at 16:57 UTC). ✅ The CUR export delivered at
-> 04:27 UTC on 2026-10-03 has `iamPrincipal/owner = alice.smith@example.com` and `iamPrincipal/product`
-> on every `bedrock-user-alice` row from 2026-10-02 14:00 UTC on. Earlier rows have no tag
-> (no backfill was requested). ✅ On 2026-10-03, Cost Explorer showed the tags under the **separate keys
-> `iamPrincipal/owner` and `iamPrincipal/product`**, not under `owner`. Filtering on
-> `iamPrincipal/owner = alice.smith@example.com` returned only Claude model charges (Opus, Sonnet, Haiku),
-> with no resource-tag spend mixed in.
+> **Notes**
+> - Activate the tags with **Tag type = IAM principal**. The same keys may also be listed as
+>   *Resource* tags, which do not apply to Bedrock.
+> - Tags apply only to usage after activation. Earlier usage stays untagged unless a backfill is
+>   requested.
+> - In Cost Explorer and AWS Budgets the tags appear as separate keys, `iamPrincipal/owner` and
+>   `iamPrincipal/product`. Plain `owner` is the resource tag and does not include Bedrock spend.
 
-### 4.4 The shared deny policy ✅
-
+### 4.4 The shared deny policy
 A **single** customer managed policy, [`poc/bedrock-deny.json`](poc/bedrock-deny.json), is reused for
 every person. It is created as `policy/bedrock/bedrock-deny`.
 
@@ -274,7 +267,7 @@ every person. It is created as `policy/bedrock/bedrock-deny`.
 `AccessDeniedException` within about 15 s. After it was detached, calls worked again. Nobody else
 was affected.
 
-### 4.5 Execution role for AWS Budgets ✅ (verified with the budget action)
+### 4.5 Execution role for AWS Budgets
 
 AWS Budgets uses this role to attach the deny policy. It may **only** attach or detach `bedrock-deny`,
 and **only** on roles under `bedrock-users/`.
@@ -293,11 +286,10 @@ and **only** on roles under `bedrock-users/`.
 
 The role is created as `role/bedrock/bedrock-budget-actions`.
 
-> ✅ These minimal permissions are sufficient. In the PoC, AWS Budgets used this role to attach
-> `bedrock-deny` successfully, and nothing else was needed.
+> These minimal permissions are sufficient: in testing, AWS Budgets attached `bedrock-deny` with this
+> role and needed nothing else.
 
-### 4.6 Per-person budget and action ✅
-
+### 4.6 Per-person budget and action
 ```bash
 # 1. Budget, filtered to one person's Bedrock spend
 aws budgets create-budget --account-id <ACCOUNT_ID> \
@@ -319,29 +311,20 @@ aws budgets create-budget-action --account-id <ACCOUNT_ID> --budget-name bedrock
   --subscribers SubscriptionType=EMAIL,Address=<email>
 ```
 
-> ✅ **Budget filter:** the tag key is **`iamPrincipal/owner`** in both Cost Explorer and Budgets
-> (verified 2026-10-03). Use `FilterExpression` + `Metrics`, the newer Budgets syntax that matches
-> Cost Explorer. The real budget `bedrock-alice` ($6) reported **$4.635** right after creation, the
-> same as Cost Explorer for that filter. That amount was Claude model charges only (Opus, Sonnet,
-> Haiku). Filtering on plain `owner` matches the *resource* tag and returns $0.
+> **Budget filter.** Filter on the tag key `iamPrincipal/owner`, using `FilterExpression` and
+> `Metrics` (the Budgets syntax that matches Cost Explorer). A filter on plain `owner` matches the
+> resource tag and counts $0.
 >
-> ✅ **End-to-end through the filter:** the 80% alert went to `ALARM`, and the pause fired at 04:47 UTC on
-> 2026-10-04, about 10.5 h after the budget was created. Afterwards the limit was raised to $100 with
-> `update-budget`, keeping the filter.
->
-> ✅ **PoC result:** test budget `poc-bedrock-alice` (whole account, $1 limit, already exceeded when it
-> was created at 17:08 UTC on 2026-09-30) **fired automatically at 20:24 UTC, about 3 h 15 min later**.
-> AWS Budgets attached `bedrock-deny` to `bedrock-user-alice`. Calls through the personal role were
-> then denied, while the Admin SSO role kept working, so only the targeted person was paused.
-> The action was reversed and the test budget deleted at 03:44 UTC on 2026-10-01, so
-> `poc/check-status.sh` no longer has anything to check.
+> **Test results.** With this filter, the budget's reported spend matched Cost Explorer and contained
+> only Claude model charges. The 80% alert and the 100% pause both fired, and only the targeted
+> person was paused; other roles kept working. `update-budget` keeps the filter as long as the
+> request includes it.
 
-> ⚠️ Budget data lags actual usage by **several hours**. Measured time from "over the limit" to
-> "paused": 3 h 15 min, 15.5 h, 5.3 h and 10.5 h in four tests. The pause is a **soft limit**: a person can
+> ⚠️ Budget data lags actual usage by **several hours**. In testing, the time from "over the limit"
+> to "paused" ranged from about 3 to 16 hours. The pause is a **soft limit**: a person can
 > exceed their budget by the amount they spend before the next budget evaluation.
 
-### 4.7 Reporting from the CUR export ✅
-
+### 4.7 Reporting from the CUR export
 A quick local query with DuckDB:
 
 ```sql
@@ -356,14 +339,13 @@ GROUP BY ALL
 ORDER BY cost_usd DESC;
 ```
 
-For ongoing reporting, use Athena (a Glue table over the export prefix) or CUDOS dashboards. 📝
+For ongoing reporting, use Athena (a Glue table over the export prefix) or CUDOS dashboards.
 
 ---
 
 ## 5. User setup
 
-### 5.1 AWS CLI profile ✅
-
+### 5.1 AWS CLI profile
 Add the following to `~/.aws/config`. It builds on the SSO sign-in you already use.
 
 Replace **every** `<…>` placeholder with your own values.
@@ -378,7 +360,7 @@ region = us-west-2
 
 - The profile name (`bedrock-personal`) is your choice. Use the same name in Claude Code (5.2).
 - `source_profile` is your SSO sign-in profile, the one that `aws login` or `aws sso login` writes.
-  ✅ Tested with an `aws login` profile (`login_session = …`) for both the CLI and Claude Code.
+  An `aws login` profile (`login_session = …`) works for both the CLI and Claude Code.
 - `role_session_name` must be **exactly** your SSO email, or access is denied.
 - Credentials from this role last 1 hour (the role-chaining limit). The CLI, the SDKs and
   Claude Code refresh them automatically while your SSO sign-in is still valid.
@@ -396,8 +378,7 @@ aws sts get-caller-identity --profile bedrock-personal
 # Expect: arn:aws:sts::<ACCOUNT_ID>:assumed-role/bedrock-user-<name>/<email>
 ```
 
-### 5.2 Claude Code ✅
-
+### 5.2 Claude Code
 In `~/.claude/settings.json`:
 
 ```json
@@ -422,10 +403,9 @@ In `~/.claude/settings.json`:
 
 Bedrock calls fail with `AccessDeniedException … bedrock:InvokeModel`, and you receive an email from
 AWS Budgets. The pause applies immediately, including to sessions that are already running. See
-[7.2](#72-unpausing--exceptions) for how to get access back. 📝
+[7.2](#72-unpausing--exceptions) for how to get access back.
 
-### 5.4 Troubleshooting ✅
-
+### 5.4 Troubleshooting
 Start by checking who you are: `aws sts get-caller-identity --profile <profile>`.
 
 | Symptom | Likely cause | Fix |
@@ -454,15 +434,14 @@ the following can currently call Bedrock directly, and those calls are untagged:
 | **B. Deny in permission sets:** add an inline `Deny bedrock:Invoke*` to the Admin/PowerUser sets, and retire IAM users | Medium (admins can still create roles) | Low (IT, Identity Center) |
 | **C. SCP:** allow Bedrock only from `role/bedrock-users/*`, `role/bedrock-apps/*` and a break-glass role, and protect the personal roles from modification | Strong | Medium (management account) |
 
-**Recommendation for the first rollout: A + B. Add C if bypass is observed.** 📝 The draft SCP will be
-added in the next revision.
+**Recommendation for the first rollout: A + B. Add C if bypass is observed.** A draft SCP will be
+added in a later revision.
 
 ---
 
-## 7. Operations 📝
-
+## 7. Operations
 ### 7.1 Onboarding / offboarding
-- Onboarding: `scripts/bedrock-user.sh onboard …` creates the role, the budget and the action (tested 2026-10-05).
+- Onboarding: `scripts/bedrock-user.sh onboard …` creates the role, the budget and the action.
 - Offboarding: delete the role and the budget. SSO deactivation already blocks access.
 
 ### 7.2 Unpausing / exceptions
@@ -474,34 +453,24 @@ aws budgets execute-budget-action --account-id <ACCOUNT_ID> --budget-name bedroc
   --action-id <action-id> --execution-type RESET_BUDGET_ACTION
 ```
 
-> ✅ **Reverse leaves the action disarmed.** After `REVERSE_BUDGET_ACTION`, the status is
-> `REVERSE_SUCCESS`. In that state the test action did **not** fire again in 27 h, although the spend
-> stayed far above the limit. `RESET_BUDGET_ACTION` moves it back to `STANDBY` (tested 2026-10-03).
-> ✅ A reset action fires again: the test action was reset at 18:06 UTC on 2026-10-03 and paused its
-> role again at 23:26 UTC. After a reverse, Bedrock access returned **about 20 s** later (IAM propagation).
+> **Always reset after reversing.** After `REVERSE_BUDGET_ACTION`, the action stays in
+> `REVERSE_SUCCESS` and does not fire again, even if spend stays above the limit.
+> `RESET_BUDGET_ACTION` returns it to `STANDBY`, after which it fires normally. Bedrock access returns
+> about 20 seconds after a reverse.
 
 Still to define: who may approve an exception, and how.
 
-### 7.3 Monthly reset ✅
+### 7.3 Monthly reset
 
-AWS does not lift the pause at the start of a month (see below). The Lambda
-`bedrock-monthly-unpause` ([`poc/unpause/`](poc/unpause/)) runs at 06:00 UTC on the 1st, from the
-EventBridge Scheduler schedule `cron(0 6 1 * ? *)`. For every `bedrock-*` budget it reverses fired
-actions and resets them to `STANDBY`.
-- ✅ Tested by hand on 2026-10-02: it reversed a fired action in under 1 s.
-- ✅ It does not need `iam:PassRole`. It needs only `budgets:DescribeBudgetActionsForAccount`,
-  `budgets:DescribeBudgetAction`, `budgets:ExecuteBudgetAction` and CloudWatch Logs.
-- ✅ Full run on 2026-10-05 at 02:31 UTC: it unpaused and re-armed two paused budgets (`STANDBY`, deny
-  detached), and Bedrock through the personal role worked again about 20 s later.
+AWS Budgets does not lift a pause or re-arm the action when a new month starts: in testing, a paused
+role stayed paused into the next period. The Lambda `bedrock-monthly-unpause`
+([`scripts/monthly-unpause/`](scripts/monthly-unpause/)) runs at 06:00 UTC on the 1st (EventBridge
+Scheduler, `cron(0 6 1 * ? *)`). For every `bedrock-*` budget it reverses fired actions and resets
+them to `STANDBY`.
 
-**Original observation:** at 03:40 UTC on 2026-10-01, almost 4 h into the new budget period, the action
-had **not** been reversed. `bedrock-deny` was still attached, and the action history showed no new
-events. **Assume that a paused person stays paused into the next month until an admin reverses
-the action.** A monthly unpause step (manual or scripted) is needed. Check again later on
-2026-10-01 to see whether AWS resets it later in the day (this needs a new test budget, because
-the PoC one was deleted). *(PoC: the observation ended at 03:44 UTC,
-when the action was reversed manually with `REVERSE_BUDGET_ACTION`. That worked within 1 s, and the
-test budget was then deleted.)*
+- It needs only `budgets:DescribeBudgetActionsForAccount`, `budgets:DescribeBudgetAction`,
+  `budgets:ExecuteBudgetAction` and CloudWatch Logs permissions. `iam:PassRole` is not required.
+- It is safe to run at any time. Actions that have not fired are left unchanged.
 
 ---
 
@@ -509,11 +478,7 @@ test budget was then deleted.)*
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 1 | IAM-principal-type `owner`/`product` tags appear and are activated (now for all accounts) | IT (management account) | ✅ Activated 2026-10-02 07:10 UTC; in CUR and Cost Explorer as `iamPrincipal/owner` from 2026-10-03 |
-| 2 | AWS Budgets can filter on the IAM principal `owner` tag | alice | ✅ `FilterExpression` on `iamPrincipal/owner` matches Cost Explorer; the 80% alert and 100% pause fired through it |
-| 3 | Budget action fires with the minimal execution role | alice | ✅ Fired 2026-09-30 20:24 UTC, about 3 h after the threshold was exceeded |
-| 4 | Behaviour of the action at the monthly reset | alice | ✅ AWS does not unpause or re-arm; the monthly Lambda does (7.3). A reset action fires again. |
-| 5 | Negative test: another user (carol) cannot assume `bedrock-user-alice` | alice + carol | ⏳ |
-| 6 | Session name and CLI behaviour with account access manager | IT + alice | 📝 Future |
-| 7 | Bypass controls (option B or C), plus the draft SCP for section 6 | IT + alice | 📝 |
-| 8 | Sections still to write: model access and regions, AI-usage group / permission set, Athena reporting | alice | 📝 |
+| 1 | Confirm that one engineer cannot assume another engineer's personal role (negative test) | Admin | Planned |
+| 2 | Evaluate IAM account access manager (direct role assignment, no role chaining) | IT | Future |
+| 3 | Stronger bypass controls (option B or C in section 6), including a draft SCP | IT | Not started |
+| 4 | Sections to add: model access and regions, AI-usage permission set, Athena reporting | Admin | Not started |

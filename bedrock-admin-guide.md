@@ -1,10 +1,9 @@
 # Amazon Bedrock: Admin Guide
 
-> **Status: v0.2 (2026-10-05).** For **admins**: the owners of an AWS account
+> **Version 1.0 (2026-10-05).** For **admins**: the owners of an AWS account
 > where engineers use Bedrock. You set up the account once (Part 1) and then onboard engineers
 > (Part 2). Nothing in this guide needs central IT. Engineers follow the [user guide](bedrock-user-guide.md). The design
 > and test results are in [bedrock-design.md](bedrock-design.md).
-> ✅ = tested · ⏳ = not ready yet
 
 ## How it works, in short
 
@@ -37,8 +36,7 @@ export ACCOUNT_ID=<aws-account-id>          # e.g. 111122223333
 export AWS_PROFILE=<your-admin-sso-profile> # e.g. default
 ```
 
-### Step 1.1 Create the cost export ✅
-
+### Step 1.1 Create the cost export
 This gives per-person cost reports.
 
 1. Open *Billing and Cost Management → Data Exports → Create*.
@@ -46,8 +44,7 @@ This gives per-person cost reports.
 3. Under **Additional export content**, tick **Include caller identity (IAM principal) allocation data**.
 4. Choose Parquet, hourly, and an S3 bucket.
 
-### Step 1.2 Create the shared "pause" policy ✅
-
+### Step 1.2 Create the shared "pause" policy
 One policy is shared by everyone. AWS Budgets attaches it to a person's role to pause them.
 
 ```bash
@@ -67,8 +64,7 @@ aws iam create-policy --policy-name bedrock-deny --path /bedrock/ \
   --policy-document file://bedrock-deny.json
 ```
 
-### Step 1.3 Create the role that AWS Budgets uses ✅
-
+### Step 1.3 Create the role that AWS Budgets uses
 This role may **only** attach or detach the pause policy, and **only** on personal Bedrock roles.
 
 ```bash
@@ -103,8 +99,7 @@ aws iam put-role-policy --role-name bedrock-budget-actions \
   --policy-name attach-bedrock-deny --policy-document file://budget-actions-permissions.json
 ```
 
-### Step 1.4 Turn on the monthly auto-unpause ✅
-
+### Step 1.4 Turn on the monthly auto-unpause
 AWS does **not** lift a pause when a new month starts. This scheduled job does it: at 06:00 UTC on
 the 1st it unpauses everyone and re-arms their pause for the new month. One job covers all
 engineers. Its code is [`scripts/monthly-unpause/lambda_function.py`](scripts/monthly-unpause/lambda_function.py).
@@ -156,8 +151,7 @@ aws scheduler create-schedule --name bedrock-monthly-unpause \
 **Check:** `aws lambda invoke --function-name bedrock-monthly-unpause out.json && cat out.json`
 lists who was unpaused and re-armed. It is safe to run at any time.
 
-### Step 1.5 Watch for Bedrock usage outside personal roles ✅
-
+### Step 1.5 Watch for Bedrock usage outside personal roles
 Budgets only cover calls made **through the personal roles**. Calls from other roles (for example
 an Admin SSO session) or from IAM users are billed with no `owner` tag, so no budget counts them.
 
@@ -174,7 +168,7 @@ aws ce get-cost-and-usage --time-period Start=$(date -u +%Y-%m-01),End=$(date -u
 
 The line `iamPrincipal/owner$` (no email after `$`) is **untracked** model spend. The other lines
 show each engineer. If untracked spend shows up, find out who it is with
-[Find who isn't using their personal role](#find-who-isnt-using-their-personal-role-).
+[Find who isn't using their personal role](#find-who-isnt-using-their-personal-role).
 (On Linux, use `date -u -d tomorrow +%Y-%m-%d` instead of `date -u -v+1d +%Y-%m-%d`.)
 
 
@@ -190,8 +184,7 @@ profile:
 export AWS_PROFILE=<your-admin-sso-profile>   # e.g. default
 ```
 
-### Onboard an engineer ✅
-
+### Onboard an engineer
 ```bash
 scripts/bedrock-user.sh onboard <name> <sso-email> <notify-email> <monthly-usd> <product>
 
@@ -212,20 +205,17 @@ the [user guide](bedrock-user-guide.md).
 
 > A new engineer's spend shows as $0 for about a day, until their first calls reach billing.
 
-### Check an engineer's spend and pause status ✅
-
+### Check an engineer's spend and pause status
 ```bash
 scripts/bedrock-user.sh status alice
 ```
 
-### Change a limit ✅
-
+### Change a limit
 ```bash
 scripts/bedrock-user.sh set-limit alice 150
 ```
 
-### Unpause an engineer ✅
-
+### Unpause an engineer
 ```bash
 scripts/bedrock-user.sh unpause alice
 ```
@@ -235,16 +225,14 @@ scripts/bedrock-user.sh unpause alice
   room this month, run `set-limit` first and then `unpause`.
 - You don't need to do anything at the start of a month. The scheduled job unpauses everyone.
 
-### Offboard an engineer ✅
-
+### Offboard an engineer
 ```bash
 scripts/bedrock-user.sh offboard alice
 ```
 
 Removing someone from SSO already blocks their access. This removes their role and budget.
 
-### Find who isn't using their personal role ✅
-
+### Find who isn't using their personal role
 Untracked spend means someone called Bedrock **without their personal role**. The person can still
 be identified (below), but **none of the controls apply**:
 
@@ -255,7 +243,7 @@ be identified (below), but **none of the controls apply**:
   call Bedrock.
 
 The [user guide](bedrock-user-guide.md#why-use-your-personal-role) explains this to engineers. Billing still records **who** made each call (their SSO email or IAM user name), so you can find
-them. Run this once a month, or whenever the check in [Step 1.5](#step-15-watch-for-bedrock-usage-outside-personal-roles-)
+them. Run this once a month, or whenever the check in [Step 1.5](#step-15-watch-for-bedrock-usage-outside-personal-roles)
 shows untracked spend:
 
 ```bash

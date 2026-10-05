@@ -1,6 +1,6 @@
 # Amazon Bedrock: User Guide
 
-> **Status: v0.1 (2026-10-05).** For engineers who use Claude and other models through Amazon
+> **Version 1.0 (2026-10-05).** For engineers who use Claude and other models through Amazon
 > Bedrock. Setup takes about 5 minutes.
 
 ## How it works
@@ -17,12 +17,12 @@ a monthly report. What you lose is everything else:
 
 | | Personal role (`bedrock` profile) | Any other profile |
 |---|---|---|
-| Who made the call | ✅ Your email | ✅ Your email (found later in a report) |
-| Counts toward your budget | ✅ | ❌ |
-| Email at 80% of your budget | ✅ | ❌ |
-| Automatic pause at 100% | ✅ | ❌ No limit at all |
-| Cost charged to your team/product | ✅ | ❌ Shows as unallocated cost |
-| Shows up in Cost Explorer per person | ✅ Next day | ❌ Only in the monthly report |
+| Who made the call | Yes, your email | Yes, your email (found later in a report) |
+| Counts toward your budget | Yes | No |
+| Email at 80% of your budget | Yes | No |
+| Automatic pause at 100% | Yes | No, so there is no limit at all |
+| Cost charged to your team/product | Yes | No, it shows as unallocated cost |
+| Shows up in Cost Explorer per person | Yes, the next day | No, only in the monthly report |
 | What a coding agent (e.g. Claude Code) can do in AWS | Only call Bedrock | Everything that profile allows. With `AWSAdministratorAccess`, that's the whole account. |
 
 So the cost still comes back to you, but without the warning, the limit and the team allocation
