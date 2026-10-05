@@ -5,10 +5,10 @@ They are kept for reference. **Use the guides and [`../scripts/`](../scripts/) f
 
 | File | Used for |
 |---|---|
-| `trust-alice.json`, `bedrock-invoke.json` | The first personal role, `bedrock-user-alice` |
+| `trust-achen.json`, `bedrock-invoke.json` | The first personal role, `bedrock-user-achen` |
 | `bedrock-deny.json` | The shared pause policy |
 | `budget-actions-trust.json`, `budget-actions-permissions.json` | The role AWS Budgets uses to pause people |
 | `poc-budget.json`, `check-status.sh` | First budget-action test (budget deleted) |
-| `invoke-as-alice.sh` | Bedrock call through the personal role |
-| `unpause-me.sh` | Self-unpause for `bedrock-alice` while Claude Code itself was paused |
+| `invoke-as-achen.sh` | Bedrock call through the personal role |
+| `unpause-me.sh` | Self-unpause for `bedrock-achen` while Claude Code itself was paused |
 | `unpause/` | Monthly unpause Lambda test: IAM policies, throwaway test role, polling scripts. The current Lambda code is in [`../scripts/monthly-unpause/`](../scripts/monthly-unpause/). |

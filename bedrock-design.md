@@ -28,24 +28,24 @@ Employees use Claude and other models through **Amazon Bedrock**. Each person:
 ### How the pieces fit together
 
 ```
- Employee (SSO: alice@example.com)
+ Employee (SSO: achen@example.com)
     │  aws login / aws sso login
     ▼
- SSO session  (AWSReservedSSO_<PermissionSet>_…/alice@example.com)
+ SSO session  (AWSReservedSSO_<PermissionSet>_…/achen@example.com)
     │  sts:AssumeRole  (automatic, via ~/.aws/config)
     ▼
- Personal role: role/bedrock-users/bedrock-user-alice
-    tags: owner=alice@example.com, product=<team/product>
+ Personal role: role/bedrock-users/bedrock-user-achen
+    tags: owner=achen@example.com, product=<team/product>
     │  bedrock:InvokeModel*
     ▼
  Amazon Bedrock  ──►  Billing records caller + role tags
                           │
                           ▼
-                     AWS Budget "bedrock-alice"  (filter: iamPrincipal owner = alice@example.com)
+                     AWS Budget "bedrock-achen"  (filter: iamPrincipal owner = achen@example.com)
                           │  threshold exceeded
                           ▼
                      Budget action: attach policy/bedrock/bedrock-deny
-                          to role bedrock-user-alice  →  only Alice is paused
+                          to role bedrock-user-achen  →  only Alex is paused
 ```
 
 ---
@@ -58,7 +58,7 @@ Employees use Claude and other models through **Amazon Bedrock**. Each person:
 |---|---|---|
 | Credentials | Temporary only | Password and/or long-lived access keys |
 | Lifecycle | Managed centrally from the IdP (offboarding is automatic) | Managed separately in each account |
-| Caller ARN | `…:assumed-role/AWSReservedSSO_<Set>_<id>/alice@example.com` | `…:user/alice` |
+| Caller ARN | `…:assumed-role/AWSReservedSSO_<Set>_<id>/achen@example.com` | `…:user/achen` |
 | CLI sign-in | `aws sso login`, or `aws login` if the console session is SSO | `aws login` (console password) or access keys |
 
 **Everyone must use SSO. IAM users are not allowed for Bedrock.**
@@ -120,10 +120,11 @@ product code, for example `Claude Opus 5.5 (Amazon Bedrock Edition)`, and usage 
 Placeholders used below:
 
 - `<ACCOUNT_ID>`: the AWS account where Bedrock is used (PoC: `111122223333`)
-- `<name>`: a short username (e.g. `alice`)
-- `<email>`: the SSO username / email (e.g. `alice@example.com`)
+- `<name>`: a short username (e.g. `achen`)
+- `<email>`: the SSO username / email (e.g. `achen@example.com`)
 
 ### 4.1 CUR 2.0 export with caller identity
+
 This gives per-person **reporting**. It works even before any tags exist.
 
 1. Go to *Billing and Cost Management → Data Exports → Create* → **Standard data export (CUR 2.0)**.
@@ -136,10 +137,11 @@ The first delivery can take up to 24 h. The export adds the `line_item_iam_princ
 > Note: this increases the number of CUR rows (one row per caller per model), so the files get larger.
 
 ### 4.2 Personal role per user
+
 Each role is named `bedrock-user-<name>`, lives under the path **`/bedrock-users/`**, and is tagged with
 `owner` and `product`. The path is what the budget-action role and the SCP use to scope permissions.
 
-**Trust policy** ([`poc/trust-alice.json`](poc/trust-alice.json)). All three conditions must match:
+**Trust policy** ([`poc/trust-achen.json`](poc/trust-achen.json)). All three conditions must match:
 
 ```json
 {
@@ -221,6 +223,7 @@ denied; Bedrock calls succeed; non-Bedrock actions are denied; Claude Code works
 (confirmed in CloudTrail).
 
 ### 4.3 Activate IAM principal cost allocation tags
+
 > **Already done for all accounts.** Central IT has activated the IAM principal tags `owner` and
 > `product` organization-wide. New accounts need no action; personal roles must use exactly these
 > tag names. The steps below are for reference.
@@ -241,6 +244,7 @@ This is done **in the management account** (only it can manage cost allocation t
 >   `iamPrincipal/product`. Plain `owner` is the resource tag and does not include Bedrock spend.
 
 ### 4.4 The shared deny policy
+
 A **single** customer managed policy, [`poc/bedrock-deny.json`](poc/bedrock-deny.json), is reused for
 every person. It is created as `policy/bedrock/bedrock-deny`.
 
@@ -263,7 +267,7 @@ every person. It is created as `policy/bedrock/bedrock-deny`.
 }
 ```
 
-**Verified in the PoC:** after the policy was attached to `bedrock-user-alice`, Bedrock calls returned
+**Verified in the PoC:** after the policy was attached to `bedrock-user-achen`, Bedrock calls returned
 `AccessDeniedException` within about 15 s. After it was detached, calls worked again. Nobody else
 was affected.
 
@@ -290,8 +294,10 @@ The role is created as `role/bedrock/bedrock-budget-actions`.
 > role and needed nothing else.
 
 ### 4.6 Per-person budget and action
+
 ```bash
 # 1. Budget, filtered to one person's Bedrock spend
+
 aws budgets create-budget --account-id <ACCOUNT_ID> \
   --budget '{"BudgetName":"bedrock-<name>","BudgetType":"COST","TimeUnit":"MONTHLY",
              "BudgetLimit":{"Amount":"<limit>","Unit":"USD"},
@@ -302,6 +308,7 @@ aws budgets create-budget --account-id <ACCOUNT_ID> \
       "Subscribers":[{"SubscriptionType":"EMAIL","Address":"<email>"}]}]'
 
 # 2. Action: pause at 100%
+
 aws budgets create-budget-action --account-id <ACCOUNT_ID> --budget-name bedrock-<name> \
   --notification-type ACTUAL --action-type APPLY_IAM_POLICY \
   --action-threshold ActionThresholdValue=100,ActionThresholdType=PERCENTAGE \
@@ -325,6 +332,7 @@ aws budgets create-budget-action --account-id <ACCOUNT_ID> --budget-name bedrock
 > exceed their budget by the amount they spend before the next budget evaluation.
 
 ### 4.7 Reporting from the CUR export
+
 A quick local query with DuckDB:
 
 ```sql
@@ -386,7 +394,9 @@ added in a later revision.
 ---
 
 ## 7. Operations
+
 ### 7.1 Onboarding / offboarding
+
 - Onboarding: `scripts/bedrock-user.sh onboard …` creates the role, the budget and the action.
 - Offboarding: delete the role and the budget. SSO deactivation already blocks access.
 

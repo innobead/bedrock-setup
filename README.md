@@ -66,4 +66,4 @@ the monthly re-arm. Open items are listed in
 [bedrock-design.md §8](bedrock-design.md#8-open-items).
 
 > Account IDs, names, emails, bucket names and resource IDs in this repository are **placeholders**
-> (for example account `111122223333` and `alice@example.com`). Replace them with your own values.
+> (for example account `111122223333` and `achen@example.com`). Replace them with your own values.

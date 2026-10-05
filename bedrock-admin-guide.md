@@ -149,6 +149,7 @@ files arrive within 24 hours, under `cur/bedrock-cur/data/BILLING_PERIOD=<YYYY-M
 > - The bucket contains the account's billing data. Give read access only to admins.
 
 ### Step 1.2 Create the shared "pause" policy
+
 One policy is shared by everyone. AWS Budgets attaches it to a person's role to pause them.
 
 ```bash
@@ -169,6 +170,7 @@ aws iam create-policy --policy-name bedrock-deny --path /bedrock/ \
 ```
 
 ### Step 1.3 Create the role that AWS Budgets uses
+
 This role may **only** attach or detach the pause policy, and **only** on personal Bedrock roles.
 
 ```bash
@@ -204,6 +206,7 @@ aws iam put-role-policy --role-name bedrock-budget-actions \
 ```
 
 ### Step 1.4 Turn on the monthly auto-unpause
+
 AWS does **not** lift a pause when a new month starts. This scheduled job does it: at 06:00 UTC on
 the 1st it unpauses everyone and re-arms their pause for the new month. One job covers all
 engineers. Its code is [`scripts/monthly-unpause/lambda_function.py`](scripts/monthly-unpause/lambda_function.py).
@@ -256,6 +259,7 @@ aws scheduler create-schedule --name bedrock-monthly-unpause \
 lists who was unpaused and re-armed. It is safe to run at any time.
 
 ### Step 1.5 Watch for Bedrock usage outside personal roles
+
 Budgets only cover calls made **through the personal roles**. Calls from other roles (for example
 an Admin SSO session) or from IAM users are billed with no `owner` tag, so no budget counts them.
 
@@ -289,20 +293,33 @@ export AWS_PROFILE=<your-admin-sso-profile>   # e.g. default
 ```
 
 ### Onboard an engineer
+
 ```bash
 scripts/bedrock-user.sh onboard <name> <sso-email> <notify-email> <monthly-usd> <product>
 
 # Example
-scripts/bedrock-user.sh onboard alice alice@example.com alice.smith@example.com 100 my_product
+
+scripts/bedrock-user.sh onboard achen achen@example.com alex.chen@example.com 100 my_product
 ```
 
 | Argument | What to put |
 |---|---|
 | `name` | Short lowercase name. The role is called `bedrock-user-<name>`. |
 | `sso-email` | **Exactly** what the engineer signs in to SSO with. Check with them. It is their ID and their cost tag. |
-| `notify-email` | The engineer's **real mailbox**, where budget emails go. ⚠️ SSO login emails may not receive mail (e.g. `alice@example.com` vs. `alice.smith@example.com`), so ask for the address they actually read. |
+| `notify-email` | The engineer's **real mailbox**, where budget emails go. SSO login emails may not receive mail, so ask for the address they actually read. |
 | `monthly-usd` | The monthly limit, e.g. `100` |
 | `product` | Team or product for cost reports, e.g. `my_product` |
+
+> **Example: SSO email vs. real mailbox.** Alex Chen signs in to SSO as `achen@example.com`, but
+> reads email at `alex.chen@example.com`. Use each for its own purpose:
+>
+> | Address | Used for | Argument |
+> |---|---|---|
+> | `achen@example.com` (SSO email) | Alex's ID: the role's trust policy, the session name and the cost tag | `sso-email` |
+> | `alex.chen@example.com` (real mailbox) | Budget alerts at 80% and the pause notice at 100% | `notify-email` |
+>
+> If the budget emails go to the SSO address, Alex never sees them. To confirm someone's SSO email,
+> ask them to run `aws sts get-caller-identity` after signing in. It is the last part of the `Arn`.
 
 The script prints the `role_arn` and `role_session_name`. Send those to the engineer together with
 the [user guide](bedrock-user-guide.md).
@@ -310,18 +327,21 @@ the [user guide](bedrock-user-guide.md).
 > A new engineer's spend shows as $0 for about a day, until their first calls reach billing.
 
 ### Check an engineer's spend and pause status
+
 ```bash
-scripts/bedrock-user.sh status alice
+scripts/bedrock-user.sh status achen
 ```
 
 ### Change a limit
+
 ```bash
-scripts/bedrock-user.sh set-limit alice 150
+scripts/bedrock-user.sh set-limit achen 150
 ```
 
 ### Unpause an engineer
+
 ```bash
-scripts/bedrock-user.sh unpause alice
+scripts/bedrock-user.sh unpause achen
 ```
 
 - Access returns in about **20 seconds**.
@@ -330,13 +350,15 @@ scripts/bedrock-user.sh unpause alice
 - You don't need to do anything at the start of a month. The scheduled job unpauses everyone.
 
 ### Offboard an engineer
+
 ```bash
-scripts/bedrock-user.sh offboard alice
+scripts/bedrock-user.sh offboard achen
 ```
 
 Removing someone from SSO already blocks their access. This removes their role and budget.
 
 ### Find who isn't using their personal role
+
 Untracked spend means someone called Bedrock **without their personal role**. The person can still
 be identified (below), but **none of the controls apply**:
 
@@ -355,6 +377,7 @@ brew install duckdb     # once (Linux: see https://duckdb.org/docs/installation)
 scripts/untracked-usage.sh <s3-export-prefix> [YYYY-MM]
 
 # Example: the export from Step 1.1, current month
+
 scripts/untracked-usage.sh s3://bedrock-cur-111122223333/cur/bedrock-cur
 ```
 
@@ -365,7 +388,7 @@ scripts/untracked-usage.sh s3://bedrock-cur-111122223333/cur/bedrock-cur
 Bedrock model spend in 2026-09: tracked $0.00, untracked $6.43
 
 WHO                            USED VIA                                                   USD  LAST USED
-alice@example.com                 SSO role AWSAdministratorAccess                           6.17  2026-09-30
+achen@example.com                 SSO role AWSAdministratorAccess                           6.17  2026-09-30
 carol                            IAM user                                                  0.26  2026-09-21
 ```
 

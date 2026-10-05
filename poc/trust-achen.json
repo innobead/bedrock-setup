@@ -11,10 +11,10 @@
           "aws:PrincipalArn": "arn:aws:iam::111122223333:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_*"
         },
         "StringLike": {
-          "aws:userid": "*:alice@example.com"
+          "aws:userid": "*:achen@example.com"
         },
         "StringEquals": {
-          "sts:RoleSessionName": "alice@example.com"
+          "sts:RoleSessionName": "achen@example.com"
         }
       }
     }

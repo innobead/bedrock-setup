@@ -37,7 +37,8 @@ that protect you and your team. Using Bedrock from another profile is followed u
 - You can sign in to the AWS account with SSO.
 - Your admin has onboarded you and sent you your **`role_arn`** and **`role_session_name`**.
 - Your admin has your **real mailbox address** for budget emails. Your SSO login email may not
-  receive mail.
+  receive mail. For example, Alex Chen signs in to SSO as `achen@example.com` but reads email at
+  `alex.chen@example.com`: the role uses the SSO email, and the budget emails go to the mailbox.
 - You have the AWS CLI v2 installed.
 
 ## Setup
@@ -64,7 +65,7 @@ region = us-west-2
 ```
 
 - `source_profile` is the profile you signed in with in Step 1 (`default` if you used `aws login`).
-- `role_session_name` must be **exactly** your SSO email.
+- `role_session_name` must be **exactly** your SSO email, for example `achen@example.com`, not your mailbox address `alex.chen@example.com`.
 - ⚠️ Don't put comments at the end of a line. Put them on their own line, starting with `#`.
 
 ### Step 3 Check it
@@ -72,6 +73,7 @@ region = us-west-2
 ```bash
 aws sts get-caller-identity --profile bedrock
 # Expect: arn:aws:sts::<ACCOUNT_ID>:assumed-role/bedrock-user-<name>/<your-sso-email>
+
 ```
 
 ### Step 4 Set up Claude Code
