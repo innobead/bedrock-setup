@@ -4,7 +4,7 @@
 #   untracked-usage.sh <s3-export-prefix> [YYYY-MM]
 #
 #   s3-export-prefix  the CUR 2.0 export from Step 1.1, up to and including the export name,
-#                     e.g. s3://my-billing-bucket/cur/my-export
+#                     e.g. s3://bedrock-cur-111122223333/cur/bedrock-cur
 #   YYYY-MM           billing month, default: this month (UTC)
 #
 # Needs the AWS CLI (run with your admin profile) and the DuckDB CLI:

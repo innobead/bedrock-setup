@@ -37,12 +37,112 @@ export AWS_PROFILE=<your-admin-sso-profile> # e.g. default
 ```
 
 ### Step 1.1 Create the cost export
-This gives per-person cost reports.
+
+The cost export (CUR 2.0) is a daily-refreshed copy of the account's billing data in S3. It records
+**who** made each Bedrock call, which the per-person reports in Part 2 rely on.
+
+**Recommended names**
+
+| Item | Recommended value | Example |
+|---|---|---|
+| S3 bucket | `bedrock-cur-<account-id>` (bucket names are global, so the account ID keeps it unique) | `bedrock-cur-111122223333` |
+| Bucket region | The region your team uses | `us-west-2` |
+| S3 prefix | `cur` | `cur` |
+| Export name | `bedrock-cur` | `bedrock-cur` |
+
+With these names, the export is written to `s3://bedrock-cur-<account-id>/cur/bedrock-cur/`. That
+path is what you pass to the report script in Part 2.
+
+**1. Create the bucket and allow AWS Data Exports to write to it**
+
+```bash
+export REGION=us-west-2
+export CUR_BUCKET=bedrock-cur-${ACCOUNT_ID}
+
+aws s3api create-bucket --bucket ${CUR_BUCKET} --region ${REGION} \
+  --create-bucket-configuration LocationConstraint=${REGION}
+aws s3api put-public-access-block --bucket ${CUR_BUCKET} --public-access-block-configuration \
+  BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+cat > cur-bucket-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "AllowDataExportsToWrite",
+    "Effect": "Allow",
+    "Principal": { "Service": ["bcm-data-exports.amazonaws.com", "billingreports.amazonaws.com"] },
+    "Action": ["s3:PutObject", "s3:GetBucketPolicy"],
+    "Resource": ["arn:aws:s3:::${CUR_BUCKET}", "arn:aws:s3:::${CUR_BUCKET}/*"],
+    "Condition": {
+      "StringLike": {
+        "aws:SourceAccount": "${ACCOUNT_ID}",
+        "aws:SourceArn": ["arn:aws:cur:us-east-1:${ACCOUNT_ID}:definition/*",
+                          "arn:aws:bcm-data-exports:us-east-1:${ACCOUNT_ID}:export/*"]
+      }
+    }
+  }]
+}
+EOF
+aws s3api put-bucket-policy --bucket ${CUR_BUCKET} --policy file://cur-bucket-policy.json
+```
+
+**2. Create the export**
+
+Either in the console:
 
 1. Open *Billing and Cost Management → Data Exports → Create*.
-2. Choose **Standard data export (CUR 2.0)**.
-3. Under **Additional export content**, tick **Include caller identity (IAM principal) allocation data**.
-4. Choose Parquet, hourly, and an S3 bucket.
+2. Export type: **Standard data export**. Export name: `bedrock-cur`.
+3. Data table content settings: **CUR 2.0**, time granularity **Hourly**.
+4. Under **Additional export content**, select **Include caller identity (IAM principal) allocation
+   data**.
+5. Data export delivery options: **Parquet**, file versioning **Overwrite existing data export file**.
+6. Data export storage settings: select the bucket from step 1 and enter the prefix `cur`.
+
+Or with the CLI. The Data Exports API is always called in `us-east-1`, wherever the bucket is:
+
+```bash
+cat > cur-export.json <<EOF
+{
+  "Name": "bedrock-cur",
+  "Description": "CUR 2.0 with IAM principal data, for per-person Bedrock reporting",
+  "DataQuery": {
+    "QueryStatement": "SELECT bill_billing_entity, bill_billing_period_start_date, line_item_usage_account_id, line_item_usage_start_date, line_item_product_code, line_item_usage_type, line_item_operation, line_item_iam_principal, line_item_unblended_cost, product, tags FROM COST_AND_USAGE_REPORT",
+    "TableConfigurations": {
+      "COST_AND_USAGE_REPORT": {
+        "TIME_GRANULARITY": "HOURLY",
+        "INCLUDE_IAM_PRINCIPAL_DATA": "TRUE",
+        "INCLUDE_RESOURCES": "FALSE",
+        "INCLUDE_SPLIT_COST_ALLOCATION_DATA": "FALSE",
+        "INCLUDE_MANUAL_DISCOUNT_COMPATIBILITY": "FALSE",
+        "INCLUDE_CAPACITY_RESERVATION_DATA": "FALSE"
+      }
+    }
+  },
+  "DestinationConfigurations": {
+    "S3Destination": {
+      "S3Bucket": "${CUR_BUCKET}",
+      "S3Prefix": "cur",
+      "S3Region": "${REGION}",
+      "S3OutputConfigurations": {
+        "OutputType": "CUSTOM", "Format": "PARQUET", "Compression": "PARQUET", "Overwrite": "OVERWRITE_REPORT"
+      }
+    }
+  },
+  "RefreshCadence": { "Frequency": "SYNCHRONOUS" }
+}
+EOF
+aws bcm-data-exports create-export --region us-east-1 --export file://cur-export.json
+```
+
+The CLI version exports only the columns the Bedrock reports need, which keeps the files small. The
+console version exports all columns, which also works.
+
+**Check:** `aws bcm-data-exports list-exports --region us-east-1` lists `bedrock-cur`. The first
+files arrive within 24 hours, under `cur/bedrock-cur/data/BILLING_PERIOD=<YYYY-MM>/`.
+
+> - With **Overwrite**, each month's files are replaced on every refresh, so the bucket holds about
+>   one copy of each month and stays small.
+> - The bucket contains the account's billing data. Give read access only to admins.
 
 ### Step 1.2 Create the shared "pause" policy
 One policy is shared by everyone. AWS Budgets attaches it to a person's role to pause them.
@@ -251,11 +351,11 @@ brew install duckdb     # once (Linux: see https://duckdb.org/docs/installation)
 scripts/untracked-usage.sh <s3-export-prefix> [YYYY-MM]
 
 # Example: the export from Step 1.1, current month
-scripts/untracked-usage.sh s3://my-billing-bucket/cur/my-export
+scripts/untracked-usage.sh s3://bedrock-cur-111122223333/cur/bedrock-cur
 ```
 
-`<s3-export-prefix>` is the S3 bucket and path of your export from Step 1.1, ending with the export
-name. Example output:
+`<s3-export-prefix>` is `s3://<bucket>/<prefix>/<export-name>` from Step 1.1, for example
+`s3://bedrock-cur-111122223333/cur/bedrock-cur`. Example output:
 
 ```
 Bedrock model spend in 2026-09: tracked $0.00, untracked $6.43
