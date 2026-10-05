@@ -345,77 +345,23 @@ For ongoing reporting, use Athena (a Glue table over the export prefix) or CUDOS
 
 ## 5. User setup
 
-### 5.1 AWS CLI profile
-Add the following to `~/.aws/config`. It builds on the SSO sign-in you already use.
+The step-by-step instructions for engineers are in the [user guide](bedrock-user-guide.md). The
+design points behind them:
 
-Replace **every** `<…>` placeholder with your own values.
-
-```ini
-[profile bedrock-personal]
-role_arn = arn:aws:iam::<ACCOUNT_ID>:role/bedrock-users/bedrock-user-<name>
-source_profile = default
-role_session_name = <email>
-region = us-west-2
-```
-
-- The profile name (`bedrock-personal`) is your choice. Use the same name in Claude Code (5.2).
-- `source_profile` is your SSO sign-in profile, the one that `aws login` or `aws sso login` writes.
-  An `aws login` profile (`login_session = …`) works for both the CLI and Claude Code.
-- `role_session_name` must be **exactly** your SSO email, or access is denied.
-- Credentials from this role last 1 hour (the role-chaining limit). The CLI, the SDKs and
-  Claude Code refresh them automatically while your SSO sign-in is still valid.
-
-> ⚠️ **Do not put comments at the end of a line** in `~/.aws/config`. The AWS CLI and SDKs read
-> everything after `=` as the value. For example, `source_profile = default  # my SSO` makes the
-> CLI look for a profile literally named `default  # my SSO`. Put comments on their own line,
-> starting with `#`.
-
-Then verify it:
-
-```bash
-aws login                                             # or: aws sso login --profile <sso-profile>
-aws sts get-caller-identity --profile bedrock-personal
-# Expect: arn:aws:sts::<ACCOUNT_ID>:assumed-role/bedrock-user-<name>/<email>
-```
-
-### 5.2 Claude Code
-In `~/.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_USE_BEDROCK": "1",
-    "AWS_PROFILE": "bedrock-personal",
-    "AWS_REGION": "us-west-2"
-  }
-}
-```
-
-> ⚠️ The `env` block in `settings.json` **overrides** your shell environment. If `AWS_PROFILE` is set
-> here, exporting a different profile in the shell has no effect. Restart Claude Code after you
-> change it.
-
-> ℹ️ The personal role can **only** call Bedrock. Any other AWS command run inside Claude Code
-> (CloudTrail, S3, IAM, …) fails with `AccessDenied`. That is expected. For other AWS work, pass
-> your SSO profile explicitly, for example `aws cloudtrail lookup-events --profile default`.
-
-### 5.3 When you are paused
-
-Bedrock calls fail with `AccessDeniedException … bedrock:InvokeModel`, and you receive an email from
-AWS Budgets. The pause applies immediately, including to sessions that are already running. See
-[7.2](#72-unpausing--exceptions) for how to get access back.
-
-### 5.4 Troubleshooting
-Start by checking who you are: `aws sts get-caller-identity --profile <profile>`.
-
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| `AccessDenied … sts:AssumeRole` | A `<…>` placeholder is still in `role_arn`, or `role_session_name` is not exactly your SSO email | Fix `~/.aws/config` (5.1) |
-| `The config profile (default  # …) could not be found` | A comment at the end of a line in `~/.aws/config` | Move the comment to its own line |
-| Claude Code runs as the wrong role (for example the Admin role) | `AWS_PROFILE` in `~/.claude/settings.json` overrides the shell | Set it there (5.2) and restart Claude Code |
-| `Token has expired` / `SSO session … expired` | Your SSO sign-in expired | Run `aws login` (or `aws sso login`) again |
-| `AccessDeniedException … bedrock:InvokeModel` that used to work | You are paused by your budget | See 5.3 |
-| `AccessDenied` on non-Bedrock APIs | Expected: the personal role is Bedrock-only | Use `--profile default` |
+- **Role chaining from SSO.** Each engineer adds an AWS CLI profile (named `bedrock` in the guide)
+  that assumes `bedrock-user-<name>` from their SSO sign-in (`source_profile`). `role_session_name`
+  must be exactly their SSO email, or the trust policy denies access (4.2). An `aws login` profile
+  works as the source for both the CLI and Claude Code.
+- **Credentials last 1 hour.** This is the role-chaining limit. The CLI, the SDKs and Claude Code
+  refresh them automatically while the SSO sign-in is valid.
+- **Claude Code uses the built-in `/login` wizard** (3rd-party platform → Amazon Bedrock), with the
+  `bedrock` profile selected. Only calls through that profile carry the engineer's cost tags.
+- **The wizard writes to `~/.claude/settings.json`**, which every Claude Code session on the machine
+  reads, including the Claude desktop app's Code tab. Engineers who also use a personal Claude
+  account should keep work in a separate `CLAUDE_CONFIG_DIR`.
+- **The personal role can only call Bedrock.** Other AWS commands need the engineer's SSO profile.
+- **When paused,** Bedrock calls fail with `AccessDeniedException … bedrock:InvokeModel … explicit
+  deny`, including in sessions that are already running. See [7.2](#72-unpausing--exceptions).
 
 ---
 
