@@ -1,17 +1,20 @@
 #!/bin/bash
 # Manage one engineer's Bedrock access: personal role, monthly budget and automatic pause.
 #
-#   bedrock-user.sh onboard   <name> <sso-email> <notify-email> <monthly-usd> <product>
-#   bedrock-user.sh status    <name>
-#   bedrock-user.sh set-limit <name> <monthly-usd>
-#   bedrock-user.sh unpause   <name>
-#   bedrock-user.sh offboard  <name>
+#   bedrock-user.sh onboard    <name> <sso-email> <notify-email> <monthly-usd> <product> [--all-models]
+#   bedrock-user.sh status     <name>
+#   bedrock-user.sh set-limit  <name> <monthly-usd>
+#   bedrock-user.sh set-models <name> <claude|all>
+#   bedrock-user.sh unpause    <name>
+#   bedrock-user.sh offboard   <name>
+#
+# New engineers can use Claude models only, unless onboarded with --all-models.
 #
 # Run with an admin profile in the Bedrock account, e.g. AWS_PROFILE=default.
 # The one-time account setup (bedrock-deny policy, budget-actions role) must already exist.
 set -euo pipefail
 
-usage() { sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 die() { echo "error: $*" >&2; exit 1; }
 
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -38,6 +41,33 @@ action_id_of() {
     --budget-name "$(budget_name "$1")" --query 'Actions[0].ActionId' --output text
 }
 
+# Permissions of the personal role. "claude" allows Anthropic Claude models only (regional models,
+# global models with an empty region, and us./eu./global. inference profiles); "all" allows any model.
+invoke_policy_json() { # <claude|all>
+  local models profiles
+  case $1 in
+    claude) models="anthropic.claude-*"; profiles="*anthropic.claude-*" ;;
+    all)    models="*";                  profiles="*" ;;
+    *)      die "model scope must be 'claude' or 'all': $1" ;;
+  esac
+  cat <<EOF
+{"Version":"2012-10-17","Statement":[
+  {"Effect":"Allow","Action":["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream"],
+   "Resource":["arn:aws:bedrock:*::foundation-model/${models}","arn:aws:bedrock:*:${ACCOUNT_ID}:inference-profile/${profiles}"]},
+  {"Effect":"Allow","Action":["bedrock:ListFoundationModels","bedrock:GetFoundationModel",
+     "bedrock:ListInferenceProfiles","bedrock:GetInferenceProfile"],"Resource":"*"}]}
+EOF
+}
+
+model_scope_of() {
+  if aws iam get-role-policy --role-name "$(role_name "$1")" --policy-name bedrock-invoke \
+       --query PolicyDocument --output json | grep -q 'anthropic.claude-'; then
+    echo "Claude models only"
+  else
+    echo "all models"
+  fi
+}
+
 budget_json() { # <name> <limit> <owner>
   cat <<EOF
 {"BudgetName":"$(budget_name "$1")","BudgetType":"COST","TimeUnit":"MONTHLY",
@@ -48,6 +78,8 @@ EOF
 }
 
 cmd_onboard() {
+  local scope=claude
+  if [ $# -eq 6 ] && [ "$6" = --all-models ]; then scope=all; set -- "$1" "$2" "$3" "$4" "$5"; fi
   [ $# -eq 5 ] || usage
   local name=$1 email=$2 notify=$3 limit=$4 product=$5
   check_name "$name"; check_email "$email"; check_email "$notify"; check_usd "$limit"
@@ -67,13 +99,7 @@ cmd_onboard() {
     "StringLike":{"aws:userid":"*:${email}"},
     "StringEquals":{"sts:RoleSessionName":"${email}"}}}]}
 EOF
-  cat > "$tmp/invoke.json" <<EOF
-{"Version":"2012-10-17","Statement":[
-  {"Effect":"Allow","Action":["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream"],
-   "Resource":["arn:aws:bedrock:*::foundation-model/*","arn:aws:bedrock:*:${ACCOUNT_ID}:inference-profile/*"]},
-  {"Effect":"Allow","Action":["bedrock:ListFoundationModels","bedrock:GetFoundationModel",
-     "bedrock:ListInferenceProfiles","bedrock:GetInferenceProfile"],"Resource":"*"}]}
-EOF
+  invoke_policy_json "$scope" > "$tmp/invoke.json"
 
   echo "Creating role $role ..."
   aws iam create-role --role-name "$role" --path /bedrock-users/ \
@@ -82,6 +108,7 @@ EOF
   aws iam put-role-policy --role-name "$role" --policy-name bedrock-invoke \
     --policy-document "file://$tmp/invoke.json"
 
+  echo "Model access: $([ "$scope" = claude ] && echo "Claude models only" || echo "all models")"
   echo "Creating budget $(budget_name "$name") (\$$limit/month, alert at 80% to $notify) ..."
   aws budgets create-budget --account-id "$ACCOUNT_ID" --budget "$(budget_json "$name" "$limit" "$owner")" \
     --notifications-with-subscribers "[{\"Notification\":{\"NotificationType\":\"ACTUAL\",
@@ -120,6 +147,17 @@ cmd_status() {
     REVERSE_SUCCESS)   echo "Paused: no, but the pause is disarmed. Run: $0 unpause $name" ;;
     *)                 echo "Pause status: $status" ;;
   esac
+  echo "Model access: $(model_scope_of "$name")"
+}
+
+cmd_set_models() {
+  [ $# -eq 2 ] || usage
+  local name=$1 scope=$2 tmp
+  tmp=$(mktemp); trap 'rm -f "$tmp"' RETURN
+  invoke_policy_json "$scope" > "$tmp"
+  aws iam put-role-policy --role-name "$(role_name "$name")" --policy-name bedrock-invoke \
+    --policy-document "file://$tmp"
+  echo "Model access for $name is now: $(model_scope_of "$name"). It takes effect in about 20 seconds."
 }
 
 cmd_set_limit() {
@@ -173,6 +211,7 @@ case $cmd in
   onboard)   cmd_onboard "$@" ;;
   status)    cmd_status "$@" ;;
   set-limit) cmd_set_limit "$@" ;;
+  set-models) cmd_set_models "$@" ;;
   unpause)   cmd_unpause "$@" ;;
   offboard)  cmd_offboard "$@" ;;
   *)         usage ;;

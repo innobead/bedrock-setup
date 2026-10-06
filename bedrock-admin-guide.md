@@ -295,10 +295,9 @@ export AWS_PROFILE=<your-admin-sso-profile>   # e.g. default
 ### Onboard an engineer
 
 ```bash
-scripts/bedrock-user.sh onboard <name> <sso-email> <notify-email> <monthly-usd> <product>
+scripts/bedrock-user.sh onboard <name> <sso-email> <notify-email> <monthly-usd> <product> [--all-models]
 
 # Example
-
 scripts/bedrock-user.sh onboard achen achen@example.com alex.chen@example.com 100 my_product
 ```
 
@@ -309,6 +308,7 @@ scripts/bedrock-user.sh onboard achen achen@example.com alex.chen@example.com 10
 | `notify-email` | The engineer's **real mailbox**, where budget emails go. SSO login emails may not receive mail, so ask for the address they actually read. |
 | `monthly-usd` | The monthly limit, e.g. `100` |
 | `product` | Team or product for cost reports, e.g. `my_product` |
+| `--all-models` | Optional. Without it, the engineer can use **Claude models only**. See [Change model access](#change-model-access). |
 
 > **Example: SSO email vs. real mailbox.** Alex Chen signs in to SSO as `achen@example.com`, but
 > reads email at `alex.chen@example.com`. Use each for its own purpose:
@@ -337,6 +337,52 @@ scripts/bedrock-user.sh status achen
 ```bash
 scripts/bedrock-user.sh set-limit achen 150
 ```
+
+### Change model access
+
+New engineers can use **Anthropic Claude models only**. That covers Claude Code and most use, and
+keeps spend predictable. To allow other Bedrock models (for example Amazon Nova or Meta Llama), or
+to go back to Claude only:
+
+```bash
+scripts/bedrock-user.sh set-models achen all      # any Bedrock model
+scripts/bedrock-user.sh set-models achen claude   # Claude models only (the default)
+```
+
+The change takes effect in about 20 seconds. `status` shows the current model access.
+
+The Claude-only permission policy that the script puts on the personal role (inline policy
+`bedrock-invoke`):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InvokeClaudeModelsOnly",
+      "Effect": "Allow",
+      "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+      "Resource": [
+        "arn:aws:bedrock:*::foundation-model/anthropic.claude-*",
+        "arn:aws:bedrock:*:<ACCOUNT_ID>:inference-profile/*anthropic.claude-*"
+      ]
+    },
+    {
+      "Sid": "DiscoverModels",
+      "Effect": "Allow",
+      "Action": ["bedrock:ListFoundationModels", "bedrock:GetFoundationModel",
+                 "bedrock:ListInferenceProfiles", "bedrock:GetInferenceProfile"],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+- The first resource line covers Claude models in every region, including global models, whose ARN
+  has an empty region.
+- The second covers the cross-region inference profiles such as `us.anthropic.claude-…` and
+  `global.anthropic.claude-…`. A call through a profile needs permission on both the profile and the
+  underlying models.
 
 ### Unpause an engineer
 
@@ -377,7 +423,6 @@ brew install duckdb     # once (Linux: see https://duckdb.org/docs/installation)
 scripts/untracked-usage.sh <s3-export-prefix> [YYYY-MM]
 
 # Example: the export from Step 1.1, current month
-
 scripts/untracked-usage.sh s3://bedrock-cur-111122223333/cur/bedrock-cur
 ```
 

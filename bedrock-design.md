@@ -305,7 +305,6 @@ The role is created as `role/bedrock/bedrock-budget-actions`.
 
 ```bash
 # 1. Budget, filtered to one person's Bedrock spend
-
 aws budgets create-budget --account-id <ACCOUNT_ID> \
   --budget '{"BudgetName":"bedrock-<name>","BudgetType":"COST","TimeUnit":"MONTHLY",
              "BudgetLimit":{"Amount":"<limit>","Unit":"USD"},
@@ -316,7 +315,6 @@ aws budgets create-budget --account-id <ACCOUNT_ID> \
       "Subscribers":[{"SubscriptionType":"EMAIL","Address":"<email>"}]}]'
 
 # 2. Action: pause at 100%
-
 aws budgets create-budget-action --account-id <ACCOUNT_ID> --budget-name bedrock-<name> \
   --notification-type ACTUAL --action-type APPLY_IAM_POLICY \
   --action-threshold ActionThresholdValue=100,ActionThresholdType=PERCENTAGE \
