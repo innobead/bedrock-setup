@@ -403,12 +403,41 @@ carol                            IAM user                                       
 > - Calls made before the IAM-principal tags were active also show as untracked. This only matters
 >   for history; the tags are now active for all accounts.
 
+### See who spent what in the console
+
+Most reporting is available in the AWS console, without scripts. Billing data is about a day behind.
+
+**Per-person spend (Cost Explorer).** Open *Billing and Cost Management → Cost Explorer* and set:
+
+1. **Date range:** for example *Month to date*. **Granularity:** *Daily* or *Monthly*.
+2. **Group by:** *Tag*, key **`iamPrincipal/owner`**. Do not use plain `owner`: that is the resource
+   tag and shows $0 for Bedrock.
+3. **Filters:** *Billing entity* = **AWS Marketplace**. Claude and other third-party models are
+   billed there, so a filter on *Service = Amazon Bedrock* misses most of the spend.
+
+The chart shows one group per engineer's SSO email. Spend without an owner tag appears as a
+separate "no tag" group: that is usage outside personal roles. To find out who it was, use
+[Find who isn't using their personal role](#find-who-isnt-using-their-personal-role).
+
+**Other views:**
+
+| Question | Group by | Filter |
+|---|---|---|
+| Which models cost the most? | *Service* (each model is listed separately, for example "Claude Opus 5.5 (Amazon Bedrock Edition)") | *Billing entity* = AWS Marketplace |
+| One engineer's spend by model | *Service* | *Tag* `iamPrincipal/owner` = their SSO email |
+| Spend per team or product | *Tag*, key `iamPrincipal/product` | *Billing entity* = AWS Marketplace |
+
+Use **Save to report library** to keep a view for next time.
+
+**Budgets and pauses.** *Billing and Cost Management → Budgets* lists each `bedrock-<name>` budget
+with its limit, its actual spend and whether the 80% alert has fired. Open a budget and select
+**Actions** to see whether the engineer is currently paused. The command-line equivalent is
+`scripts/bedrock-user.sh status <name>`.
+
 ### Things to know
 
 - **The pause is not instant.** AWS Budgets pauses someone **3 to 16 hours** after they cross 100%
   (measured), so engineers can go somewhat over budget.
 - **Costs appear about a day late** in Budgets and Cost Explorer.
-- **To see who spent what:** Cost Explorer → *Group by → Tag → **iamPrincipal/owner***. Plain `owner`
-  is a different tag and doesn't include Bedrock. AWS bills Claude and other models under **AWS
-  Marketplace**, so a filter on *Service = Amazon Bedrock* misses them.
+- **To see who spent what,** see [See who spent what in the console](#see-who-spent-what-in-the-console).
 - Who may approve an exception is still to be decided.
