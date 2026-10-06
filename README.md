@@ -52,7 +52,7 @@ their first Bedrock call, and the first cost export arrives within 24 hours of s
 |---|---|
 | [`bedrock-user-guide.md`](bedrock-user-guide.md) | Engineer setup, troubleshooting, what happens when you're paused |
 | [`bedrock-admin-guide.md`](bedrock-admin-guide.md) | Part 1: one-time account setup. Part 2: onboarding and managing engineers |
-| [`bedrock-design.md`](bedrock-design.md) | Design decisions, how the pieces work, test results, open items |
+| [`bedrock-design.md`](bedrock-design.md) | Why it works this way: concepts, design decisions, each component and its policies, security model, limits, open items |
 | [`scripts/bedrock-user.sh`](scripts/bedrock-user.sh) | Admin script: `onboard`, `status`, `set-limit`, `unpause`, `offboard` |
 | [`scripts/untracked-usage.sh`](scripts/untracked-usage.sh) | Admin report: who used Bedrock without their personal role |
 | [`scripts/monthly-unpause/`](scripts/monthly-unpause/) | Lambda that unpauses and re-arms everyone on the 1st |
