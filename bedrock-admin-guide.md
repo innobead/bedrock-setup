@@ -341,7 +341,8 @@ scripts/bedrock-user.sh set-limit achen 150
 ### Change model access
 
 New engineers can use **Anthropic Claude models only**. That covers Claude Code and most use, and
-keeps spend predictable. To allow other Bedrock models (for example Amazon Nova or Meta Llama), or
+keeps spend predictable. The **Claude Fable family is not approved** and is always denied, whatever
+the model access. To allow other Bedrock models (for example Amazon Nova or Meta Llama), or
 to go back to Claude only:
 
 ```bash
@@ -373,6 +374,16 @@ The Claude-only permission policy that the script puts on the personal role (inl
       "Action": ["bedrock:ListFoundationModels", "bedrock:GetFoundationModel",
                  "bedrock:ListInferenceProfiles", "bedrock:GetInferenceProfile"],
       "Resource": "*"
+    },
+    {
+      "Sid": "DenyUnapprovedFableModels",
+      "Effect": "Deny",
+      "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream",
+                 "bedrock:CreateModelInvocationJob"],
+      "Resource": [
+        "arn:aws:bedrock:*::foundation-model/anthropic.claude-fable*",
+        "arn:aws:bedrock:*:<ACCOUNT_ID>:inference-profile/*anthropic.claude-fable*"
+      ]
     }
   ]
 }
@@ -383,6 +394,8 @@ The Claude-only permission policy that the script puts on the personal role (inl
 - The second covers the cross-region inference profiles such as `us.anthropic.claude-…` and
   `global.anthropic.claude-…`. A call through a profile needs permission on both the profile and the
   underlying models.
+- The deny statement blocks every Claude Fable model and profile. It is also part of the all-models
+  policy, and an explicit deny overrides any allow, so `set-models … all` does not enable Fable.
 
 ### Unpause an engineer
 

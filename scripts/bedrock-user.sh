@@ -43,6 +43,7 @@ action_id_of() {
 
 # Permissions of the personal role. "claude" allows Anthropic Claude models only (regional models,
 # global models with an empty region, and us./eu./global. inference profiles); "all" allows any model.
+# The Claude Fable family is not approved: an explicit deny blocks it in both scopes.
 invoke_policy_json() { # <claude|all>
   local models profiles
   case $1 in
@@ -55,13 +56,17 @@ invoke_policy_json() { # <claude|all>
   {"Effect":"Allow","Action":["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream"],
    "Resource":["arn:aws:bedrock:*::foundation-model/${models}","arn:aws:bedrock:*:${ACCOUNT_ID}:inference-profile/${profiles}"]},
   {"Effect":"Allow","Action":["bedrock:ListFoundationModels","bedrock:GetFoundationModel",
-     "bedrock:ListInferenceProfiles","bedrock:GetInferenceProfile"],"Resource":"*"}]}
+     "bedrock:ListInferenceProfiles","bedrock:GetInferenceProfile"],"Resource":"*"},
+  {"Sid":"DenyUnapprovedFableModels","Effect":"Deny",
+   "Action":["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream","bedrock:CreateModelInvocationJob"],
+   "Resource":["arn:aws:bedrock:*::foundation-model/anthropic.claude-fable*",
+               "arn:aws:bedrock:*:${ACCOUNT_ID}:inference-profile/*anthropic.claude-fable*"]}]}
 EOF
 }
 
 model_scope_of() {
   if aws iam get-role-policy --role-name "$(role_name "$1")" --policy-name bedrock-invoke \
-       --query PolicyDocument --output json | grep -q 'anthropic.claude-'; then
+       --query PolicyDocument --output json | grep -q 'foundation-model/anthropic.claude-\*"'; then
     echo "Claude models only"
   else
     echo "all models"

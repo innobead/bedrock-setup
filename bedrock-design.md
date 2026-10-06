@@ -113,7 +113,7 @@ product code, for example `Claude Opus 5.5 (Amazon Bedrock Edition)`, and usage 
 | Identity | SSO (IAM Identity Center) | IAM users: long-lived keys, separate lifecycle, can bypass SSO offboarding |
 | Per-person cost attribution | IAM principal tags on a personal role | Application inference profiles per user: one profile **per user per model**, too many to manage. SSO session tags: IT may not enable them, and it is unconfirmed whether billing picks them up. |
 | Per-person enforcement | Budget action attaches a shared `bedrock-deny` policy to the personal role | Deny on the shared SSO role: pauses everyone, or needs one conditional policy per user (managed-policy quota of 10–20 per role), and Identity Center may overwrite it. |
-| Model access | **Claude models only** by default; any Bedrock model on request | All models for everyone: less predictable spend, and most use (including Claude Code) is Claude. Per-model budgets: Budgets cannot pause per model. |
+| Model access | **Claude models only** by default; any Bedrock model on request. The **Claude Fable family is always denied** (not approved). | All models for everyone: less predictable spend, and most use (including Claude Code) is Claude. Per-model budgets: Budgets cannot pause per model. |
 | Getting into the personal role | **Now:** SSO → `sts:AssumeRole` (role chaining). **Later:** IAM *account access manager* | Account access manager assigns the role directly (no chaining, simpler client config), but IT must enable it in the management account. Switching later only changes the trust policy and the user sign-in steps. |
 
 ---
@@ -188,6 +188,9 @@ SCP target exactly these roles. The tags are what billing records on each call.
   in the region position also matches that.
 - Engineers who need other models get `foundation-model/*` and `inference-profile/*` instead
   (`--all-models` or `set-models … all`).
+- **The Claude Fable family is not approved.** Both variants include an explicit deny on
+  `foundation-model/anthropic.claude-fable*` and `inference-profile/*anthropic.claude-fable*`. An
+  explicit deny overrides any allow, so widening the model access never enables Fable.
 - The role can also list and describe models and profiles, so tools can discover what is available.
 - `bedrock:Converse` and `bedrock:ConverseStream` are not IAM actions. The Converse APIs are
   authorized by `InvokeModel` and `InvokeModelWithResponseStream`.
@@ -311,7 +314,9 @@ name. The protection does not depend on admin rights, because the `aws:userid` c
 value that Identity Center sets.
 
 **What the trust policy cannot prevent.** An account admin can **edit** a trust policy or a role's
-tags, and can call Bedrock directly instead of through a personal role. Calls outside personal roles
+tags, and can call Bedrock directly instead of through a personal role. The Fable deny is part of
+the personal-role policy only, so calls from other roles are not covered by it. Blocking Fable for
+the whole organization needs option B or C below. Calls outside personal roles
 are billed without an `owner` tag, so no budget counts them. In the pilot account, the following
 could call Bedrock directly:
 

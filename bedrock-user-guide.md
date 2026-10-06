@@ -10,7 +10,8 @@
 ## How it works
 
 - You use Bedrock through a **personal AWS role** that only you can use, from your SSO login.
-- You can use **Anthropic Claude models**. If you need other Bedrock models, ask your admin.
+- You can use **Anthropic Claude models**, except the Claude Fable family, which is not approved.
+  If you need other Bedrock models, ask your admin.
 - You have a **monthly budget**. You get an email at 80%. At 100% your Bedrock access is
   **paused** until your admin unpauses you, or until the 1st of next month.
 
@@ -114,6 +115,7 @@ role `bedrock-user-<name>` (your admin can confirm).
 | `Token has expired` / SSO session expired | Run `aws login` again |
 | `AccessDeniedException … bedrock:InvokeModel` (it worked before) | You're paused. See [When you're paused](#when-youre-paused). |
 | `AccessDeniedException … bedrock:InvokeModel` for a non-Claude model | Only Claude models are enabled for you. Ask your admin if you need others. |
+| `AccessDeniedException … bedrock:InvokeModel` for a Claude Fable model | The Fable family is not approved for use. Choose another Claude model. |
 | `AccessDenied` on a non-Bedrock command | Expected. Use `--profile default`. |
 
 ---
