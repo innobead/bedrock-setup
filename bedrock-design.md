@@ -222,6 +222,14 @@ aws iam put-role-policy \
 denied; Bedrock calls succeed; non-Bedrock actions are denied; Claude Code works through the role
 (confirmed in CloudTrail).
 
+**One engineer cannot use another engineer's role.** Tested with a second personal role: an SSO
+session of a different person was denied in every case, including when it used the role owner's
+email as the session name, and when it came from that person's own personal role instead of SSO.
+This holds for account admins too, because the trust policy conditions apply to every caller.
+
+> An account admin can still **edit** another person's trust policy or tags, which the trust policy
+> cannot prevent. Limiting that requires the bypass controls in section 6.
+
 ### 4.3 Activate IAM principal cost allocation tags
 
 > **Already done for all accounts.** Central IT has activated the IAM principal tags `owner` and
@@ -434,7 +442,6 @@ them to `STANDBY`.
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 1 | Confirm that one engineer cannot assume another engineer's personal role (negative test) | Admin | Planned |
-| 2 | Evaluate IAM account access manager (direct role assignment, no role chaining) | IT | Future |
-| 3 | Stronger bypass controls (option B or C in section 6), including a draft SCP | IT | Not started |
-| 4 | Sections to add: model access and regions, AI-usage permission set, Athena reporting | Admin | Not started |
+| 1 | Evaluate IAM account access manager (direct role assignment, no role chaining) | IT | Future |
+| 2 | Stronger bypass controls (option B or C in section 6), including a draft SCP | IT | Not started |
+| 3 | Sections to add: model access and regions, AI-usage permission set, Athena reporting | Admin | Not started |
