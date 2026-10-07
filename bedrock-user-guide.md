@@ -85,30 +85,27 @@ Start Claude Code and sign in to Bedrock with the built-in wizard. No config fil
 2. Choose **3rd-party platform → Amazon Bedrock**.
 3. When asked how to authenticate to AWS, pick the **AWS profile** `bedrock` from Step 2.
    ⚠️ Not `default` or your SSO profile: only `bedrock` counts toward your budget.
-4. Choose region **us-west-2**. For the models, use **Claude Sonnet 5.5** (`us.anthropic.claude-sonnet-5-5`)
-   for everything, as set in the next part.
+4. Choose region **us-west-2** and accept the suggested models. You then make Sonnet 5.5 the default,
+   as described below.
 
 Check it with `/status`: it should show Amazon Bedrock. A test call should then appear under your
 role `bedrock-user-<name>` (your admin can confirm).
 
-**Use Sonnet 5.5 for everything.** Opus costs much more, and your budget is limited. After the
+**Make Sonnet 5.5 your default model.** Opus costs much more, and your budget is limited. After the
 wizard, make sure `~/.claude/settings.json` (or `~/.claude-work/settings.json` if you use the
-separate config folder below) has these values under `env`, and run `/model` to check:
+separate config folder below) has these values, and run `/model` to check:
 
 ```json
 {
   "model": "sonnet",
   "env": {
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-5-5",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-sonnet-5-5",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-sonnet-5-5"
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-5-5"
   }
 }
 ```
 
-Pointing the Opus and Haiku names at Sonnet 5.5 means the built-in model choices and background
-tasks also use it. Keep the other lines the wizard wrote (`CLAUDE_CODE_USE_BEDROCK`, `AWS_PROFILE`,
-`AWS_REGION`).
+Keep the other lines the wizard wrote (`CLAUDE_CODE_USE_BEDROCK`, `AWS_PROFILE`, `AWS_REGION` and the
+Opus and Haiku models). You can still switch to another model with `/model`.
 
 - Your Bedrock role can **only** call Bedrock. For any other AWS command, add `--profile default`.
 - Credentials renew automatically. When your SSO sign-in expires, run `aws login` again.
