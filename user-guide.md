@@ -1,6 +1,6 @@
 # Amazon Bedrock: user guide
 
-For engineers who use Claude through Amazon Bedrock, for example in Claude Code. Setup takes a few
+For anyone who uses Claude through Amazon Bedrock, for example in Claude Code. Setup takes a few
 minutes.
 
 > Before you begin, your admin must have set up the AWS account and onboarded you. They send you

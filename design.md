@@ -1,7 +1,7 @@
 # Amazon Bedrock: design
 
 How and why per-person Bedrock budgets work, for reviewers in IT, security and finance. To set it
-up, see the [admin guide](admin-guide.md). Engineers follow the [user guide](user-guide.md).
+up, see the [admin guide](admin-guide.md). Users follow the [user guide](user-guide.md).
 
 ## Contents
 
@@ -23,7 +23,7 @@ up, see the [admin guide](admin-guide.md). Engineers follow the [user guide](use
 
 ## 1. Goals
 
-- Each engineer has a monthly Bedrock budget. When they reach it, only they are paused.
+- Each user has a monthly Bedrock budget. When they reach it, only they are paused.
 - One command, `bedrock-admin apply`, sets up the whole account. It is safe to re-run.
 - Users are managed by editing one file, reviewed in Git and applied by `apply`.
 - One view of everyone's spend, this month or past months, including spend outside the budgets.
@@ -39,7 +39,7 @@ There are two CLIs:
 | CLI | For | Commands |
 | --- | --- | --- |
 | `bedrock-admin` | The account admin | `configure`, `doctor`, `plan`, `apply`, `export`, `uninstall`, `pause`, `unpause`, `usage` |
-| `bedrock` | Engineers | `setup`, `doctor`, `claude` |
+| `bedrock` | Users | `setup`, `doctor`, `claude` |
 
 ## 2. Key concepts
 
@@ -448,8 +448,8 @@ captures an existing account's users into a file, as a convenience.
 
 | Who | Can use a personal role? |
 | --- | --- |
-| The engineer, signed in with SSO, session name = their email | Yes, their own role only |
-| Another engineer, with any session name | No |
+| The user, signed in with SSO, session name = their email | Yes, their own role only |
+| Another user, with any session name | No |
 | An account admin (for example `AWSAdministratorAccess`) | No: the trust conditions apply to every caller |
 | IAM users, other roles, or a personal role chaining into another | No: only SSO sessions are trusted |
 
@@ -483,7 +483,7 @@ sets.
 | Credentials | Role chaining limits personal-role credentials to 1 hour. The AWS CLI, the SDKs and Claude Code refresh them while the SSO sign-in is valid. |
 | Personal role scope | Bedrock only; other AWS commands need the SSO profile |
 | Emails | Only AWS Budgets sends email (alerts and the automatic pause), with fixed wording. No email for a pause or unpause by hand. |
-| Claude Code settings | The `/login` wizard writes `~/.claude/settings.json`, which every Claude Code session on the machine reads. Engineers with a personal Claude account should use a separate `CLAUDE_CONFIG_DIR`. |
+| Claude Code settings | The `/login` wizard writes `~/.claude/settings.json`, which every Claude Code session on the machine reads. Users with a personal Claude account should use a separate `CLAUDE_CONFIG_DIR`. |
 
 ## 13. Testing
 

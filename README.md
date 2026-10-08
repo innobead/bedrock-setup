@@ -1,6 +1,6 @@
 # Amazon Bedrock: per-person budgets and automatic pausing
 
-Engineers use Claude through Amazon Bedrock with their SSO login. Each engineer has a personal
+People use Claude through Amazon Bedrock with their SSO login. Each user has a personal
 role and a monthly budget. When someone reaches their limit, only that person is paused. Everyone is
 re-armed on the 1st of the month.
 
@@ -8,7 +8,7 @@ Two command-line tools do the work:
 
 - `bedrock-admin`, for the account admin. It sets up the account and manages users from one file,
   `bedrock.yaml`.
-- `bedrock`, for engineers. It sets up the AWS profile of their personal role and checks it.
+- `bedrock`, for users. It sets up the AWS profile of their personal role and checks it.
 
 ## Contents
 
@@ -24,14 +24,14 @@ Two command-line tools do the work:
 
 | You are | Read |
 | --- | --- |
-| An engineer who wants to use Bedrock or Claude Code | [User guide](user-guide.md) |
+| A user who wants to use Bedrock or Claude Code | [User guide](user-guide.md) |
 | The admin of an AWS account: you set up the account and manage users | [Admin guide](admin-guide.md) |
 | Reviewing how and why it works (IT, security, finance) | [Design](design.md) |
 | Running the end-to-end tests | [tests/e2e/README.md](tests/e2e/README.md) |
 
 ## Getting started
 
-Engineers can't start until the admin has run steps 1 to 3.
+Users can't start until the admin has run steps 1 to 3.
 
 | Step | Who | What | Guide |
 | --- | --- | --- | --- |
@@ -39,16 +39,16 @@ Engineers can't start until the admin has run steps 1 to 3.
 | 2 | Admin | Write `bedrock.yaml` with `bedrock-admin configure` | [Admin guide, step 2](admin-guide.md#2-create-bedrockyaml) |
 | 3 | Admin | `bedrock-admin plan`, then `bedrock-admin apply`: account setup (Steps 1.1–1.7) and users | [Admin guide, step 3](admin-guide.md#3-set-up-the-account-plan-then-apply) |
 | 4 | Admin | Onboard users: add them to `users:` in `bedrock.yaml`, then `apply`, and send each one the command `apply` prints | [Admin guide, step 4](admin-guide.md#4-day-to-day-changes-are-file-edits) |
-| 5 | Engineer | `aws sso login`, `bedrock setup`, then `bedrock claude` (tests Claude Code, prints its settings) | [User guide](user-guide.md) |
+| 5 | User | `aws sso login`, `bedrock setup`, then `bedrock claude` (tests Claude Code, prints its settings) | [User guide](user-guide.md) |
 | 6 | Admin | Monthly: `bedrock-admin usage` to see spend and calls outside personal roles | [Admin guide, step 7](admin-guide.md#7-read-spend) |
 
 Billing data runs behind. The first cost export arrives within 24 hours of the first `apply`, and
-an engineer's spend shows up in their budget 3 to 16 hours after the calls.
+a user's spend shows up in their budget 3 to 16 hours after the calls.
 
 ## How it works
 
 ```
- Engineer (SSO login)
+ User (SSO login)
     │  aws sso login, then profile "bedrock" (written by bedrock setup)
     ▼
  Personal role  bedrock-user-<name>      Claude models only, tagged owner=<sso-email>
@@ -85,7 +85,7 @@ into the `bedrock-admin` binary.
 | `usage` | Spend per user, and spend outside personal roles. Exits 2 when it finds untracked spend |
 | `uninstall` | Removes the account setup. Refuses while users remain |
 
-`bedrock`, for engineers:
+`bedrock`, for users:
 
 | Command | What it does |
 | --- | --- |
@@ -129,7 +129,7 @@ Check the install with `bedrock-admin --version` and `bedrock --version`.
 
 | Path | What it is |
 | --- | --- |
-| [`user-guide.md`](user-guide.md) | Engineer setup, troubleshooting, what happens when you're paused |
+| [`user-guide.md`](user-guide.md) | User setup, troubleshooting, what happens when you're paused |
 | [`admin-guide.md`](admin-guide.md) | Account setup, managing users, pauses, spend, cheat sheet |
 | [`design.md`](design.md) | How and why it works: the model, each component, security, limits, testing, open items |
 | `cmd/bedrock-admin/` | Admin CLI |

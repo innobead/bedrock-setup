@@ -1,7 +1,7 @@
 # Amazon Bedrock: admin guide
 
-For the admin of an AWS account where engineers use Bedrock. You set up the account and manage
-users with `bedrock-admin`, from one file, `bedrock.yaml`. Engineers follow the
+For the admin of an AWS account where people use Claude through Bedrock. You set up the account
+and manage users with `bedrock-admin`, from one file, `bedrock.yaml`. Users follow the
 [user guide](user-guide.md). How and why it works is in [design.md](design.md).
 
 ## Contents
@@ -26,10 +26,10 @@ users with `bedrock-admin`, from one file, `bedrock.yaml`. Engineers follow the
 
 ## How it works, in short
 
-- Each engineer gets a personal IAM role, `bedrock-user-<name>`, that can only call Claude models.
+- Each user gets a personal IAM role, `bedrock-user-<name>`, that can only call Claude models.
   They reach it from their SSO login.
 - The role is tagged with their SSO email. AWS bills each Bedrock call with that tag.
-- Each engineer has a monthly budget on that tag. At `alert_at_percent` they get an email. At
+- Each user has a monthly budget on that tag. At `alert_at_percent` they get an email. At
   `pause_at_percent` AWS Budgets pauses only them, by attaching the `bedrock-deny` policy to their
   role.
 - On the 1st of each month a Lambda saves a snapshot of everyone's limit and pause state, then
@@ -225,7 +225,7 @@ Settings in detail:
 ### Choosing models
 
 List the Claude inference profile IDs offered in your region. These are the IDs `models:` accepts, and
-the same ones engineers enter in Claude Code and the Claude desktop app:
+the same ones users enter in Claude Code and the Claude desktop app:
 
 ```bash
 aws bedrock list-inference-profiles --region us-west-2 --type-equals SYSTEM_DEFINED \
@@ -259,7 +259,7 @@ us.anthropic.claude-sonnet-5-5
 - `bedrock-admin configure` writes Opus, Sonnet and Haiku 5.5 (`us.`/`eu.` by region, `global.` elsewhere).
   The `bedrock` user CLI uses the same three by default (`bedrock doctor` tests them,
   `bedrock claude` prints them). The user CLI doesn't read `bedrock.yaml`: if you list other models,
-  announce them. Engineers then update the model IDs in their own Claude Code settings and Claude
+  announce them. Users then update the model IDs in their own Claude Code settings and Claude
   desktop app model list, and can test one with `bedrock doctor --model <id>`.
 
 `!include` works anywhere in the file. Duplicate emails or names are rejected. Every problem in the
@@ -581,7 +581,7 @@ edited in the console. `apply` puts back the file's version. `--quiet` prints on
 
 ## 9. Block direct model calls (Step 1.7)
 
-Engineers can call Bedrock straight from their SSO login and bypass their budget. Step 1.7 blocks
+Users can call Bedrock straight from their SSO login and bypass their budget. Step 1.7 blocks
 model calls from every SSO role except your admin permission set. Turn it on in the file (it is on
 by default with `configure`):
 
@@ -718,4 +718,4 @@ The end-to-end tests run the real binaries against a real AWS account, by hand, 
 | Capture an account in a file | `bedrock-admin export > bedrock.yaml` |
 | Check my setup | `bedrock-admin doctor` |
 | Remove everything | `users: []`, `bedrock-admin apply --yes`, then `bedrock-admin uninstall` |
-| Set up an engineer's machine | `bedrock setup` (the engineer runs it) |
+| Set up a user's machine | `bedrock setup` (the user runs it) |
