@@ -2,8 +2,8 @@
 
 > **Version 1.0 (2026-10-05).** For **admins**: the owners of an AWS account
 > where engineers use Bedrock. You set up the account once (Part 1) and then onboard engineers
-> (Part 2). Nothing in this guide needs central IT. Engineers follow the [user guide](bedrock-user-guide.md). The design
-> and test results are in [bedrock-design.md](bedrock-design.md).
+> (Part 2). Nothing in this guide needs central IT. Engineers follow the [user guide](user-guide.md). The design
+> and test results are in [design.md](design.md).
 
 ## How it works, in short
 
@@ -20,7 +20,7 @@
 | [Part 2: Managing your engineers](#part-2-managing-your-engineers) | Admin | Per engineer, ~1 min |
 
 **Order:** complete Part 1 (Steps 1.1 to 1.5, in order) before onboarding anyone. Engineers can
-only start the [user guide](bedrock-user-guide.md) after you have onboarded them and sent them
+only start the [user guide](user-guide.md) after you have onboarded them and sent them
 their details (Part 2).
 
 ---
@@ -322,7 +322,7 @@ scripts/bedrock-user.sh onboard achen achen@example.com alex.chen@example.com 10
 > ask them to run `aws sts get-caller-identity` after signing in. It is the last part of the `Arn`.
 
 The script prints the `role_arn` and `role_session_name`. Send those to the engineer together with
-the [user guide](bedrock-user-guide.md).
+the [user guide](user-guide.md).
 
 > A new engineer's spend shows as $0 for about a day, until their first calls reach billing.
 
@@ -427,7 +427,7 @@ be identified (below), but **none of the controls apply**:
 - if it's a coding agent on the `AWSAdministratorAccess` role, the agent can change anything in the account, not just
   call Bedrock.
 
-The [user guide](bedrock-user-guide.md#why-use-your-personal-role) explains this to engineers. Billing still records **who** made each call (their SSO email or IAM user name), so you can find
+The [user guide](user-guide.md#why-use-your-personal-role) explains this to engineers. Billing still records **who** made each call (their SSO email or IAM user name), so you can find
 them. Run this once a month, or whenever the check in [Step 1.5](#step-15-watch-for-bedrock-usage-outside-personal-roles)
 shows untracked spend:
 
@@ -452,7 +452,7 @@ carol                            IAM user                                       
 
 | `USED VIA` | What happened | What to do |
 |---|---|---|
-| `SSO role <permission set>` | They used Bedrock directly from their SSO login (for example `AWSAdministratorAccess`) instead of the `bedrock` profile | Ask them to follow the [user guide](bedrock-user-guide.md). If they haven't been onboarded, onboard them. |
+| `SSO role <permission set>` | They used Bedrock directly from their SSO login (for example `AWSAdministratorAccess`) instead of the `bedrock` profile | Ask them to follow the [user guide](user-guide.md). If they haven't been onboarded, onboard them. |
 | `IAM user` | They used an IAM user or a long-term Bedrock API key | Onboard them, then remove the IAM user's access keys or API key |
 | `personal role without owner tag` | The role is missing its `owner` tag | Re-tag it: `aws iam tag-role --role-name bedrock-user-<name> --tags Key=owner,Value=<sso-email>` |
 | `role <name>` | An application or another role | Check who owns that role. Apps need their own budget or must be excluded on purpose. |

@@ -1,9 +1,9 @@
 # Amazon Bedrock: Design and Mechanism
 
 > **Version 1.0 (2026-10-05).** This document explains how the setup works and why. The steps are in
-> the [admin guide](bedrock-admin-guide.md) and the [user guide](bedrock-user-guide.md). Everything
+> the [admin guide](admin-guide.md) and the [user guide](user-guide.md). Everything
 > described here was tested end to end in a pilot AWS account.
-> Proof-of-concept files: [`poc/`](poc/). Guides: [admin](bedrock-admin-guide.md), [user](bedrock-user-guide.md); admin script [`scripts/bedrock-user.sh`](scripts/bedrock-user.sh).
+> Proof-of-concept files: [`poc/`](poc/). Guides: [admin](admin-guide.md), [user](user-guide.md); admin script [`scripts/bedrock-user.sh`](scripts/bedrock-user.sh).
 
 ## Contents
 
@@ -120,12 +120,12 @@ product code, for example `Claude Opus 5.5 (Amazon Bedrock Edition)`, and usage 
 
 ## 4. Components and why they are built this way
 
-The commands to create each component are in the [admin guide](bedrock-admin-guide.md). This section
+The commands to create each component are in the [admin guide](admin-guide.md). This section
 explains what each one does and why.
 
 ### 4.1 Cost export with caller identity
 
-*Set up in [admin guide, Step 1.1](bedrock-admin-guide.md#step-11-create-the-cost-export).*
+*Set up in [admin guide, Step 1.1](admin-guide.md#step-11-create-the-cost-export).*
 
 A CUR 2.0 export with **caller identity (IAM principal) data** adds the column
 `line_item_iam_principal`, the ARN of the caller of each Bedrock call, and the `iamPrincipal/*` tags
@@ -139,7 +139,7 @@ Exporting only the columns the reports need keeps them small.
 
 ### 4.2 Personal role per engineer
 
-*Created by `scripts/bedrock-user.sh onboard` ([admin guide, Part 2](bedrock-admin-guide.md#onboard-an-engineer)).*
+*Created by `scripts/bedrock-user.sh onboard` ([admin guide, Part 2](admin-guide.md#onboard-an-engineer)).*
 
 Each engineer has a role `bedrock-user-<name>` under the path **`/bedrock-users/`**, tagged with
 `owner` (their SSO email) and `product` (their team). The path lets the Budgets role and any future
@@ -196,7 +196,7 @@ SCP target exactly these roles. The tags are what billing records on each call.
   authorized by `InvokeModel` and `InvokeModelWithResponseStream`.
 
 **How engineers reach the role.** Engineers sign in to SSO and use an AWS CLI profile (`bedrock` in
-the [user guide](bedrock-user-guide.md)). The profile assumes the role from the SSO session
+the [user guide](user-guide.md)). The profile assumes the role from the SSO session
 (`source_profile`) with their SSO email as the session name. Claude Code uses the same profile,
 selected in its `/login` wizard. An `aws login` profile works as the source for both the CLI and
 Claude Code.
@@ -216,7 +216,7 @@ action is needed per account. Personal roles must use exactly these tag names.
 
 ### 4.4 Shared pause policy
 
-*Set up in [admin guide, Step 1.2](bedrock-admin-guide.md#step-12-create-the-shared-pause-policy).*
+*Set up in [admin guide, Step 1.2](admin-guide.md#step-12-create-the-shared-pause-policy).*
 
 One customer managed policy, `policy/bedrock/bedrock-deny`, is used for everyone. Attaching it to a
 personal role pauses that engineer, and detaching it lifts the pause. An explicit deny overrides
@@ -247,7 +247,7 @@ because one policy per person would quickly reach IAM's managed-policy quotas.
 
 ### 4.5 Execution role for AWS Budgets
 
-*Set up in [admin guide, Step 1.3](bedrock-admin-guide.md#step-13-create-the-role-that-aws-budgets-uses).*
+*Set up in [admin guide, Step 1.3](admin-guide.md#step-13-create-the-role-that-aws-budgets-uses).*
 
 AWS Budgets attaches the pause policy using the role `role/bedrock/bedrock-budget-actions`. It trusts
 only `budgets.amazonaws.com` for this account's budgets, and it may only attach or detach
@@ -282,7 +282,7 @@ contained only Claude model charges, and paused only the targeted engineer.
 
 ### 4.7 Monthly unpause
 
-*Set up in [admin guide, Step 1.4](bedrock-admin-guide.md#step-14-turn-on-the-monthly-auto-unpause).*
+*Set up in [admin guide, Step 1.4](admin-guide.md#step-14-turn-on-the-monthly-auto-unpause).*
 
 AWS Budgets does **not** lift a pause when a new month starts. In testing, a paused role stayed
 paused into the next period. In addition:
@@ -326,7 +326,7 @@ could call Bedrock directly:
 
 | Option | Strength | Effort |
 |---|---|---|
-| **A. Detect:** a monthly report of Bedrock spend by callers outside personal roles ([admin guide](bedrock-admin-guide.md#find-who-isnt-using-their-personal-role)) | Visibility only | Low |
+| **A. Detect:** a monthly report of Bedrock spend by callers outside personal roles ([admin guide](admin-guide.md#find-who-isnt-using-their-personal-role)) | Visibility only | Low |
 | **B. Deny in permission sets:** add an inline `Deny bedrock:Invoke*` to the Admin and PowerUser sets, and retire IAM users | Medium (admins can still create roles) | Low (IT, Identity Center) |
 | **C. SCP:** allow Bedrock only from `role/bedrock-users/*`, `role/bedrock-apps/*` and a break-glass role, and protect the personal roles from modification | Strong | Medium (management account) |
 
@@ -355,9 +355,9 @@ added in a later revision.
 
 - **Cost Explorer and Budgets** show spend per engineer (tag `iamPrincipal/owner`), per model
   (*Service*) and per team (tag `iamPrincipal/product`). See
-  [See who spent what in the console](bedrock-admin-guide.md#see-who-spent-what-in-the-console).
+  [See who spent what in the console](admin-guide.md#see-who-spent-what-in-the-console).
 - **Who used Bedrock outside a personal role** is only in the cost export. The admin script
-  `scripts/untracked-usage.sh` reports it ([admin guide](bedrock-admin-guide.md#find-who-isnt-using-their-personal-role)).
+  `scripts/untracked-usage.sh` reports it ([admin guide](admin-guide.md#find-who-isnt-using-their-personal-role)).
 - For ad hoc questions, query the export directly, for example with DuckDB:
 
 ```sql

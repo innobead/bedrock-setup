@@ -93,7 +93,7 @@ cmd_onboard() {
   local owner=$email
 
   aws iam get-policy --policy-arn "$DENY_ARN" >/dev/null 2>&1 \
-    || die "one-time account setup missing: $DENY_ARN (see bedrock-admin-guide.md, Part 1)"
+    || die "one-time account setup missing: $DENY_ARN (see admin-guide.md, Part 1)"
 
   local tmp; tmp=$(mktemp -d); trap 'rm -rf "$tmp"' RETURN
   cat > "$tmp/trust.json" <<EOF
