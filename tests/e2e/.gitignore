@@ -1,0 +1,5 @@
+config/*
+!config/example.py
+results/
+bin/
+__pycache__/

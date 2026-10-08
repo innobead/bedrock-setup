@@ -8,3 +8,10 @@ __pycache__/
 cur/
 
 .DS_Store
+
+# Small synthetic test fixtures are committed
+!tests/fixtures/*.parquet
+
+# Go build output
+/bin/
+/dist/

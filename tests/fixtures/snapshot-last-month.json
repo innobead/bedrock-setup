@@ -1,0 +1,41 @@
+{
+  "month": "2026-09",
+  "taken_at": "2026-10-01T06:00:05Z",
+  "account": "111122223333",
+  "users": [
+    {
+      "email": "usage-a@example.test",
+      "name": "usage-a",
+      "budget": "bedrock-usage-a",
+      "role": "bedrock-user-usage-a",
+      "limit_usd": 50,
+      "pause_at_percent": 100,
+      "trigger_usd": 50,
+      "state": "paused",
+      "paused_at": "2026-09-12T14:00:00Z"
+    },
+    {
+      "email": "usage-b@example.test",
+      "name": "usage-b",
+      "budget": "bedrock-usage-b",
+      "role": "bedrock-user-usage-b",
+      "limit_usd": 100,
+      "pause_at_percent": 100,
+      "trigger_usd": 100,
+      "state": "armed"
+    },
+    {
+      "email": "usage-c@example.test",
+      "name": "usage-c",
+      "budget": "bedrock-usage-c",
+      "role": "bedrock-user-usage-c",
+      "limit_usd": 30,
+      "pause_at_percent": 100,
+      "trigger_usd": 30,
+      "state": "paused-by-hand",
+      "paused_at": "2026-09-20T09:00:00Z",
+      "paused_by": "admin@example.test",
+      "reason": "key leak"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+version: 2
+
+before:
+  hooks:
+    - go mod download
+    # Builds internal/lambdacode/assets/bootstrap.zip, embedded in bedrock-admin.
+    - go generate ./...
+
+builds:
+  - id: bedrock-admin
+    main: ./cmd/bedrock-admin
+    binary: bedrock-admin
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{ .Version }}"]
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+  - id: bedrock
+    main: ./cmd/bedrock
+    binary: bedrock
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{ .Version }}"]
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: bedrock-admin
+    ids: [bedrock-admin]
+    name_template: "bedrock-admin_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+  - id: bedrock
+    ids: [bedrock]
+    name_template: "bedrock_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github

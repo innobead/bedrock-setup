@@ -1,148 +1,244 @@
-# Amazon Bedrock: User Guide
+# Amazon Bedrock: user guide
 
-> **Version 1.0 (2026-10-05).** For engineers who use Claude and other models through Amazon
-> Bedrock. Setup takes about 5 minutes.
+For engineers who use Claude through Amazon Bedrock, for example in Claude Code. Setup takes a few
+minutes.
 
-> **Before you begin:** your admin must first set up the AWS account and onboard you. When that is
-> done, they send you your `role_arn` and `role_session_name`. If you haven't received them, ask
-> your admin. Until then, the setup below fails with `AccessDenied`.
+> Before you begin, your admin must have set up the AWS account and onboarded you. They send you
+> the command to run, usually just `bedrock setup`. Until you are onboarded, setup fails at the
+> `permission-set access` check.
 
 ## How it works
 
-- You use Bedrock through a **personal AWS role** that only you can use, from your SSO login.
-- You can use **Anthropic Claude models**, except the Claude Fable family, which is not approved.
-  If you need other Bedrock models, ask your admin.
-- You have a **monthly budget**. You get an email at 80%. At 100% your Bedrock access is
-  **paused** until your admin unpauses you, or until the 1st of next month.
+- You use Bedrock through a personal AWS role that only you can use, from your SSO login.
+- You can use Anthropic Claude models, except the Claude Fable family, which is not approved.
+- You have a monthly budget. You get an email from AWS Budgets when you pass the alert threshold
+  (usually 80%). When you reach your limit, your Bedrock access is paused until your admin unpauses
+  you, or until the 1st of next month.
 
 ## Why use your personal role
 
-You *can* call Bedrock from other profiles, such as the `AWSAdministratorAccess` SSO login, but please don't. Those
-calls are **not anonymous**: billing still records your SSO email, and your admin sees them in
-a monthly report. What you lose is everything else:
+You can call Bedrock from other profiles, such as an `AWSAdministratorAccess` SSO login, but
+please don't. Those calls are not anonymous: billing still records your SSO email, and your admin
+sees them in the monthly `usage` report. What you lose is everything else:
 
 | | Personal role (`bedrock` profile) | Any other profile |
-|---|---|---|
-| Who made the call | Yes, your email | Yes, your email (found later in a report) |
+| --- | --- | --- |
+| Who made the call | Your email | Your email (found later in a report) |
 | Counts toward your budget | Yes | No |
-| Email at 80% of your budget | Yes | No |
-| Automatic pause at 100% | Yes | No, so there is no limit at all |
-| Cost charged to your team/product | Yes | No, it shows as unallocated cost |
-| Shows up in Cost Explorer per person | Yes, the next day | No, only in the monthly report |
-| What a coding agent (e.g. Claude Code) can do in AWS | Only call Bedrock | Everything that profile allows. With `AWSAdministratorAccess`, that's the whole account. |
+| Alert email before the limit | Yes | No |
+| Pause at the limit | Yes | No, so there is no limit at all |
+| Cost charged to your team or product | Yes | No, it shows as untracked spend |
+| What a coding agent such as Claude Code can do in AWS | Only call Claude models | Everything that profile allows |
 
-So the cost still comes back to you, but without the warning, the limit and the team allocation
-that protect you and your team. Using Bedrock from another profile is followed up by your admin.
+Your admin may also block model calls from other SSO profiles. Then the personal role is the only
+way in.
 
 ## Before you start
 
-- You can sign in to the AWS account with SSO.
-- Your admin has onboarded you and sent you your **`role_arn`** and **`role_session_name`**.
-- Your admin has your **real mailbox address** for budget emails. Your SSO login email may not
-  receive mail. For example, Alex Chen signs in to SSO as `achen@example.com` but reads email at
-  `alex.chen@example.com`: the role uses the SSO email, and the budget emails go to the mailbox.
-- You have the AWS CLI v2 installed.
+- You can sign in to the AWS account with SSO, and you have an SSO profile in `~/.aws/config`
+  (from `aws configure sso`), or you sign in with `aws login`.
+- The AWS CLI v2 is installed.
+- The `bedrock` CLI is installed. Download it for your platform from the GitHub release (see
+  [Installation](README.md#installation)), or run
+  `go install github.com/SUSE/high-impact-ai-initiative/cmd/bedrock@latest`.
+- Your admin has onboarded you. If your SSO email doesn't receive mail, give your admin your real
+  mailbox address for the budget emails.
 
 ## Setup
 
-### Step 1 Sign in with SSO
+### Step 1. Sign in with SSO
 
 ```bash
-aws login                         # or: aws sso login --profile <your-sso-profile>
-aws sts get-caller-identity       # the ARN must end in /<your-sso-email>
+aws sso login --profile <your-sso-profile>     # or: aws login
 ```
 
-> ⚠️ `aws login` reuses whatever identity your browser console is signed in as. Check the output.
+`aws login` reuses whatever identity your browser console is signed in as. `bedrock setup` checks
+that it is an SSO login.
 
-### Step 2 Add your Bedrock profile
+### Step 2. Write your Bedrock profile
 
-Add this to `~/.aws/config` and replace **every** `<…>` placeholder:
+Run the command your admin sent you. Usually it is:
+
+```bash
+bedrock setup
+```
+
+`setup` writes a `[profile bedrock]` block in `~/.aws/config` (or `$AWS_CONFIG_FILE`):
 
 ```ini
 [profile bedrock]
-role_arn = arn:aws:iam::<ACCOUNT_ID>:role/bedrock-users/bedrock-user-<name>
-source_profile = default
-role_session_name = <your-sso-email>
+role_arn = arn:aws:iam::111122223333:role/bedrock-users/bedrock-user-achen
+source_profile = my-sso
+role_session_name = achen@example.com
 region = us-west-2
 ```
 
-- `source_profile` is the profile you signed in with in Step 1 (`default` if you used `aws login`).
-- `role_session_name` must be **exactly** your SSO email, for example `achen@example.com`, not your mailbox address `alex.chen@example.com`.
-- ⚠️ Don't put comments at the end of a line. Put them on their own line, starting with `#`.
+- It reads your SSO identity to find the account and your SSO email, and derives your personal role
+  from the email.
+- `role_session_name` is set to your exact SSO email. The role only trusts that session name.
+- The region comes from your SSO profile. Your admin adds `--region` to the command when Bedrock
+  runs in another region, and `--role-arn` when your role has a custom name.
+- It keeps the previous file as `config.bak`. If a `bedrock` profile already exists, it shows the
+  old and new block and asks before replacing it. `--yes` replaces it without asking.
+- If you have several SSO profiles, it asks which one you sign in with, or pass
+  `--sso-profile <profile>`.
+- `--profile-name` writes a profile with another name.
 
-### Step 3 Check it
+Then it runs `bedrock doctor`.
+
+### Step 3. Check it
 
 ```bash
-aws sts get-caller-identity --profile bedrock
-# Expect: arn:aws:sts::<ACCOUNT_ID>:assumed-role/bedrock-user-<name>/<your-sso-email>
+bedrock doctor
 ```
 
-### Step 4 Set up Claude Code
+```
+ok    profile: bedrock in /Users/achen/.aws/config
+ok    SSO sign-in: achen@example.com (profile my-sso)
+ok    permission-set access: may use arn:aws:iam::111122223333:role/bedrock-users/bedrock-user-achen
+ok    personal role: arn:aws:sts::111122223333:assumed-role/bedrock-user-achen/achen@example.com
+ok    model us.anthropic.claude-opus-5-5: test call works
+ok    model us.anthropic.claude-sonnet-5-5: test call works
+ok    model us.anthropic.claude-haiku-5-5: test call works
 
-Start Claude Code and sign in to Bedrock with the built-in wizard. No config file to edit:
+All checks passed.
+```
 
-1. Run `claude` and type `/login`. (`/setup-bedrock` opens the same wizard.)
-2. Choose **3rd-party platform → Amazon Bedrock**.
-3. When asked how to authenticate to AWS, pick the **AWS profile** `bedrock` from Step 2.
-   ⚠️ Not `default` or your SSO profile: only `bedrock` counts toward your budget.
-4. Choose region **us-west-2** and accept the suggested models. You then make Sonnet 5.5 the default,
-   as described below.
+By default it tests Claude Opus, Sonnet and Haiku 5.5 (`us.`/`eu.` inference profiles, `global.` elsewhere). Test
+another model with `--model <id>` (repeatable). `--json` prints the checks as JSON. It exits 2 when
+a check fails, and prints the fix under it. See [If something goes wrong](#if-something-goes-wrong).
 
-Check it with `/status`: it should show Amazon Bedrock. A test call should then appear under your
-role `bedrock-user-<name>` (your admin can confirm).
+### Step 4. Set up Claude Code
 
-**Make Sonnet 5.5 your default model.** Opus costs much more, and your budget is limited. After the
-wizard, make sure `~/.claude/settings.json` (or `~/.claude-work/settings.json` if you use the
-separate config folder below) has these values, and run `/model` to check:
+`bedrock claude` checks that Claude Code works with the `bedrock` profile, then prints the settings
+to add. It never writes your Claude Code settings: you add them yourself.
 
-```json
-{
-  "model": "sonnet",
-  "env": {
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-5-5"
+```text
+$ bedrock claude
+Testing Claude Code with the bedrock profile (one short call; your Claude Code settings are not used)...
+
+ok    Claude Code with us.anthropic.claude-sonnet-5-5: answered OK
+
+Claude Code settings for the bedrock profile. bedrock doesn't write them; add them yourself:
+
+  {
+    "awsAuthRefresh": "aws sso login --profile sso",
+    "env": {
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-5-5",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-opus-5-5",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-5-5",
+      "ANTHROPIC_MODEL": "us.anthropic.claude-sonnet-5-5",
+      "AWS_PROFILE": "bedrock",
+      "AWS_REGION": "us-west-2",
+      "CLAUDE_CODE_USE_BEDROCK": "1"
+    }
   }
-}
+
+Where to put them, either way:
+  - Work only: merge them into ~/.claude/settings.json. Every Claude Code session on this machine
+    reads that file, so all of them then bill to your budget.
+  - Next to a personal Claude account: put them in ~/.claude-work/settings.json and start Claude
+    Code for work with: CLAUDE_CONFIG_DIR=~/.claude-work claude (for example as an alias in ~/.zshrc).
+
+Or run claude, type /setup-bedrock (or /login, then 3rd-party platform, Amazon Bedrock), pick the
+AWS profile bedrock and region us-west-2: the wizard writes the same env block.
+
+Check in Claude Code with /status: it shows Amazon Bedrock and the bedrock profile.
+us.anthropic.claude-opus-5-5 costs much more than Sonnet: switch to it with /model only when you need it.
+
+Claude desktop app (Settings, Amazon Bedrock):
+  AWS region:        us-west-2
+  AWS profile name:  bedrock
+  AWS CLI path:      /opt/homebrew/bin/aws
+  Model list:        us.anthropic.claude-sonnet-5-5  (the first is the default)
+                     us.anthropic.claude-opus-5-5
+                     us.anthropic.claude-haiku-5-5
 ```
 
-Keep the other lines the wizard wrote (`CLAUDE_CODE_USE_BEDROCK`, `AWS_PROFILE`, `AWS_REGION` and the
-Opus and Haiku models). You can still switch to another model with `/model`.
+The test runs `claude -p` once in a temporary, empty config folder (`CLAUDE_CONFIG_DIR`) with no
+tools, MCP servers, hooks or plugins, and removes it afterwards, so your own Claude Code settings and
+login are untouched. When it fails, it prints the fix and exits 2; the settings are printed anyway.
+Without `claude` on your PATH, or with `--no-test`, it only prints the settings. The last block
+holds the values to enter in the Claude desktop app's Amazon Bedrock settings; the AWS CLI path line
+appears when `aws` is on your PATH (the app may not see your shell's PATH). `--model` picks the
+test model.
 
-- Your Bedrock role can **only** call Bedrock. For any other AWS command, add `--profile default`.
-- Credentials renew automatically. When your SSO sign-in expires, run `aws login` again.
-- To change the profile or region later, run `/login` again. (`/logout` does not apply to Bedrock.)
+The model IDs are the standard defaults (Claude Opus, Sonnet and Haiku 5.5). Your settings are yours
+to keep up to date: if your admin announces other models, change the model IDs in your Claude Code
+settings and the desktop app's model list, and check one with `bedrock doctor --model <id>`.
 
-> ⚠️ **Also use a personal Claude account?** The wizard saves to `~/.claude/settings.json`, which
-> **every** Claude Code session on your machine reads, including the Claude Mac app's Code tab. All
-> of them would then bill to the company. Keep work in its own config folder instead:
->
-> ```bash
-> # Add to ~/.zshrc, open a new terminal, then run claude-work and do steps 1–4 there
-> alias claude-work='CLAUDE_CONFIG_DIR=~/.claude-work claude'
-> ```
->
-> `claude-work` then uses Bedrock, and plain `claude` and the Mac app keep your personal login.
+- Your personal role can only call Claude models. For any other AWS command, use your SSO profile.
+- Credentials renew automatically while your SSO sign-in is valid.
+- To change the profile or region later, edit the settings or run `/setup-bedrock` again.
 
-### If something goes wrong
+## If something goes wrong
 
-| You see | Fix |
-|---|---|
-| `AccessDenied … sts:AssumeRole` | A `<…>` placeholder is still in `role_arn`, or `role_session_name` isn't exactly your SSO email |
-| `The config profile (default  # …) could not be found` | Move the end-of-line comment in `~/.aws/config` to its own line |
-| Claude Code uses the wrong identity or account | Run `/login` again and pick the `bedrock` profile. Check with `/status`. |
-| `Token has expired` / SSO session expired | Run `aws login` again |
-| `AccessDeniedException … bedrock:InvokeModel` (it worked before) | You're paused. See [When you're paused](#when-youre-paused). |
-| `AccessDeniedException … bedrock:InvokeModel` for a non-Claude model | Only Claude models are enabled for you. Ask your admin if you need others. |
-| `AccessDeniedException … bedrock:InvokeModel` for a Claude Fable model | The Fable family is not approved for use. Choose another Claude model. |
-| `AccessDenied` on a non-Bedrock command | Expected. Use `--profile default`. |
+Run `bedrock doctor`. It stops at the first failed setup check (the model checks all run) and prints
+the fix under it:
 
----
+| Failed check | Message | Fix |
+| --- | --- | --- |
+| `profile` | `no profile bedrock in <file>` | `bedrock setup` |
+| `profile` | `missing role_arn, ...` | `bedrock setup --yes` |
+| `profile` | `<key> has a comment at the end of the line` | Put comments on their own line, or run `bedrock setup --yes` |
+| `SSO sign-in` | Your SSO session expired or you are not signed in | `aws sso login --profile <profile>` (or `aws login`) |
+| `SSO sign-in` | `signed in as ..., not with SSO` | Set `source_profile` to your SSO profile, or run `bedrock setup --sso-profile <profile>` |
+| `session name` | `role_session_name is ..., but it must be exactly your SSO email ...` | `bedrock setup --yes` |
+| `permission-set access` | `cannot use <role ARN>: ... AccessDenied` | Ask your admin to onboard you (and check `role_arn`, if they gave you one), or to let your SSO permission set use the `bedrock-users` roles |
+| `personal role` | The profile can't get credentials | `bedrock setup --yes` |
+| `model <id>` | `AccessDeniedException`, on a Claude model | Your Bedrock access is paused (monthly budget used up). It comes back on the 1st, or ask your admin to unpause you. See [When you're paused](#when-youre-paused). |
+| `model <id>` | `AccessDeniedException`, on another model | Your role may only call Anthropic Claude models (not Fable). Ask your admin if you need this one. |
+| `model <id>` | `ValidationException` or not found | The model is not offered in your region. Use another model, or ask your admin for the right region. |
+
+`bedrock setup` itself can stop with:
+
+| Message | Fix |
+| --- | --- |
+| `no SSO profile in <file>` | Run `aws configure sso` (or `aws login`) first, or pass `--sso-profile` |
+| `several SSO profiles in <file> (...)` | Pass `--sso-profile <profile>` (it asks when run in a terminal) |
+| `profile <name> has no region` | Pass `--region`. Your admin knows the Bedrock region. |
+| `reading your SSO identity ...` | Sign in first, with the command it prints |
+| `the profile exists: run again with --yes to replace it` | Run `bedrock setup --yes` |
+
+After your admin removes you, `doctor` stops at your role:
+
+```text
+$ bedrock doctor
+ok    profile: bedrock in /Users/achen/.aws/config
+ok    SSO sign-in: achen@example.com (profile my-sso)
+FAIL  permission-set access: cannot use arn:aws:iam::111122223333:role/bedrock-users/bedrock-user-achen: AccessDenied: User: arn:aws:sts::111122223333:assumed-role/AWSReservedSSO_Dev_abc123/achen@example.com is not authorized to perform: sts:AssumeRole on resource: arn:aws:iam::111122223333:role/bedrock-users/bedrock-user-achen
+      fix: ask your admin to onboard achen@example.com (and check role_arn, if they gave you one), or to let your SSO permission set use the bedrock-users roles
+```
+
+In Claude Code, if it uses the wrong identity or account, run `/login` again, pick the `bedrock`
+profile and check with `/status`.
 
 ## When you're paused
 
-Bedrock calls fail with `AccessDeniedException … bedrock:InvokeModel … explicit deny`, and you get
-an email from AWS Budgets.
+When you reach your limit, AWS Budgets attaches a deny policy to your personal role. Bedrock calls
+fail with `AccessDeniedException`, and you get an email from AWS Budgets. `bedrock doctor` reports
+it on the model checks:
 
-- Ask your admin to raise your limit and unpause you. Access returns about 20 seconds later.
-- Otherwise you are unpaused automatically on the 1st of next month.
-- Don't switch to another profile (such as `AWSAdministratorAccess`) to keep working. That usage isn't
-  counted against your budget, so it can't be tracked.
+```text
+$ bedrock doctor
+ok    profile: bedrock in /Users/achen/.aws/config
+ok    SSO sign-in: achen@example.com (profile my-sso)
+ok    permission-set access: may use arn:aws:iam::111122223333:role/bedrock-users/bedrock-user-achen
+ok    personal role: arn:aws:sts::111122223333:assumed-role/bedrock-user-achen/achen@example.com
+FAIL  model us.anthropic.claude-opus-5-5: AccessDeniedException
+      fix: your Bedrock access is paused (monthly budget used up, or paused by your admin): ask your admin, or wait for the 1st
+FAIL  model us.anthropic.claude-sonnet-5-5: AccessDeniedException
+      fix: your Bedrock access is paused (monthly budget used up, or paused by your admin): ask your admin, or wait for the 1st
+FAIL  model us.anthropic.claude-haiku-5-5: AccessDeniedException
+      fix: your Bedrock access is paused (monthly budget used up, or paused by your admin): ask your admin, or wait for the 1st
+```
+
+The pause can come a few hours after you cross the limit, because billing runs behind.
+
+- Your access comes back by itself on the 1st of next month.
+- If you need it sooner, ask your admin. They can raise your limit, or unpause you for the rest of
+  the month. Access returns within about a minute.
+- Your admin can also pause you by hand, for example when a script runs away. That pause stays until
+  they remove it, also past the 1st.
+- Don't switch to another profile to keep working. That spend isn't counted against your budget,
+  shows up in your admin's report, and may be blocked.
