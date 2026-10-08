@@ -39,7 +39,7 @@ There are two CLIs:
 | CLI | For | Commands |
 | --- | --- | --- |
 | `bedrock-admin` | The account admin | `configure`, `doctor`, `plan`, `apply`, `export`, `uninstall`, `pause`, `unpause`, `usage` |
-| `bedrock` | Engineers | `setup`, `doctor` |
+| `bedrock` | Engineers | `setup`, `doctor`, `claude` |
 
 ## 2. Key concepts
 

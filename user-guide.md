@@ -7,6 +7,20 @@ minutes.
 > the command to run, usually just `bedrock setup`. Until you are onboarded, setup fails at the
 > `permission-set access` check.
 
+## Contents
+
+- [How it works](#how-it-works)
+- [Why use your personal role](#why-use-your-personal-role)
+- [Commands](#commands)
+- [Before you start](#before-you-start)
+- [Setup](#setup)
+  - [Step 1. Sign in with SSO](#step-1-sign-in-with-sso)
+  - [Step 2. Write your Bedrock profile](#step-2-write-your-bedrock-profile)
+  - [Step 3. Check it](#step-3-check-it)
+  - [Step 4. Set up Claude Code](#step-4-set-up-claude-code)
+- [If something goes wrong](#if-something-goes-wrong)
+- [When you're paused](#when-youre-paused)
+
 ## How it works
 
 - You use Bedrock through a personal AWS role that only you can use, from your SSO login.
@@ -32,6 +46,16 @@ sees them in the monthly `usage` report. What you lose is everything else:
 
 Your admin may also block model calls from other SSO profiles. Then the personal role is the only
 way in.
+
+## Commands
+
+| Command | What it does | Section |
+| --- | --- | --- |
+| `bedrock setup` | Writes the `bedrock` profile for your personal role in `~/.aws/config`, then runs `doctor` | [Step 2](#step-2-write-your-bedrock-profile) |
+| `bedrock doctor` | Checks your SSO sign-in, the `bedrock` profile, your personal role and a model call | [Step 3](#step-3-check-it), [If something goes wrong](#if-something-goes-wrong) |
+| `bedrock claude` | Tests Claude Code with the `bedrock` profile and prints the settings to use. Changes no Claude settings | [Step 4](#step-4-set-up-claude-code) |
+
+Exit codes: 0 ok, 1 error, 2 a check failed. Run `bedrock <command> --help` for the flags.
 
 ## Before you start
 

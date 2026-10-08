@@ -4,6 +4,26 @@ For the admin of an AWS account where engineers use Bedrock. You set up the acco
 users with `bedrock-admin`, from one file, `bedrock.yaml`. Engineers follow the
 [user guide](user-guide.md). How and why it works is in [design.md](design.md).
 
+## Contents
+
+- [How it works, in short](#how-it-works-in-short)
+- [Commands](#commands)
+- [1. Install and check your environment](#1-install-and-check-your-environment)
+- [2. Create `bedrock.yaml`](#2-create-bedrockyaml)
+- [3. Set up the account: `plan`, then `apply`](#3-set-up-the-account-plan-then-apply)
+- [4. Day-to-day changes are file edits](#4-day-to-day-changes-are-file-edits)
+- [5. Someone got paused](#5-someone-got-paused)
+- [6. Pause someone yourself](#6-pause-someone-yourself)
+- [7. Read spend](#7-read-spend)
+- [8. Check production](#8-check-production)
+- [9. Block direct model calls (Step 1.7)](#9-block-direct-model-calls-step-17)
+- [10. Remove everything](#10-remove-everything)
+- [The `id` and resources you didn't create](#the-id-and-resources-you-didnt-create)
+- [Emails](#emails)
+- [Things to know](#things-to-know)
+- [Run the tests](#run-the-tests)
+- [Cheat sheet](#cheat-sheet)
+
 ## How it works, in short
 
 - Each engineer gets a personal IAM role, `bedrock-user-<name>`, that can only call Claude models.
@@ -17,6 +37,24 @@ users with `bedrock-admin`, from one file, `bedrock.yaml`. Engineers follow the
 - `bedrock.yaml` says who has access and how much they may spend. `bedrock-admin plan` shows what
   differs between the file and the account. `bedrock-admin apply` makes the account match.
 - `pause` and `unpause` are commands, not file settings. Applying the file never undoes them.
+
+## Commands
+
+| Command | What it does | Section |
+| --- | --- | --- |
+| `bedrock-admin configure` | Writes the settings part of `bedrock.yaml`, by asking or from flags | [2](#2-create-bedrockyaml) |
+| `bedrock-admin doctor` | Checks your credentials, permissions, account setup, cost export data and models | [1](#1-install-and-check-your-environment), [8](#8-check-production) |
+| `bedrock-admin plan` | Shows what `apply` would change. Read-only; exits 2 when there are changes | [3](#3-set-up-the-account-plan-then-apply) |
+| `bedrock-admin apply` | Makes the account and the users match the file. Removals need `--yes` | [3](#3-set-up-the-account-plan-then-apply), [4](#4-day-to-day-changes-are-file-edits) |
+| `bedrock-admin export` | Prints the current account, including its users, as a `bedrock.yaml` | [2](#2-create-bedrockyaml) |
+| `bedrock-admin pause` | Pauses a user by hand, until `unpause`. The monthly Lambda leaves it in place | [6](#6-pause-someone-yourself) |
+| `bedrock-admin unpause` | Restores a paused user's access | [5](#5-someone-got-paused) |
+| `bedrock-admin usage` | Spend per user, and spend outside personal roles. Exits 2 on untracked spend | [7](#7-read-spend) |
+| `bedrock-admin uninstall` | Removes the account setup. Refuses while users remain | [10](#10-remove-everything) |
+
+Common flags: `-f` (config file), `--profile`, `--json`, `--quiet`, `--dry-run` and `--yes`. Exit
+codes: 0 ok, 1 error, 2 ran fine but found a problem. Run `bedrock-admin <command> --help` for
+details.
 
 ## 1. Install and check your environment
 

@@ -8,6 +8,13 @@ covered by the Go unit tests (`go test ./...`).
 The suites are run by hand, not in CI. Run the fast suites before merging a change that touches AWS
 behavior, and `user-access` and `billing` before a release.
 
+## Contents
+
+- [Running](#running)
+- [Suites](#suites)
+- [Safety](#safety)
+- [`billing`: phased](#billing-phased)
+
 ## Running
 
 You need Docker (or `E2E_RUNTIME=podman`). Go is optional: without it, the CLIs are built in a

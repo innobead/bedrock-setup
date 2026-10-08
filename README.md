@@ -10,6 +10,16 @@ Two command-line tools do the work:
   `bedrock.yaml`.
 - `bedrock`, for engineers. It sets up the AWS profile of their personal role and checks it.
 
+## Contents
+
+- [Which document do I need?](#which-document-do-i-need)
+- [Getting started](#getting-started)
+- [How it works](#how-it-works)
+- [Commands](#commands)
+- [Installation](#installation)
+- [Repository layout](#repository-layout)
+- [Development](#development)
+
 ## Which document do I need?
 
 | You are | Read |
@@ -58,6 +68,34 @@ an engineer's spend shows up in their budget 3 to 16 hours after the calls.
 
 `bedrock-admin apply` creates all of this from `bedrock.yaml`, including the Lambda, which is built
 into the `bedrock-admin` binary.
+
+## Commands
+
+`bedrock-admin`, for the account admin:
+
+| Command | What it does |
+| --- | --- |
+| `configure` | Writes the settings part of `bedrock.yaml`, by asking or from flags |
+| `doctor` | Checks the admin's credentials, permissions, account setup, cost export data and models |
+| `plan` | Shows what `apply` would change. Read-only; exits 2 when there are changes |
+| `apply` | Makes the account and the users match `bedrock.yaml`. Removals need `--yes` |
+| `export` | Prints the current account, including its users, as a `bedrock.yaml` |
+| `pause` | Pauses a user by hand, until `unpause`. The monthly Lambda leaves it in place |
+| `unpause` | Restores a paused user's access |
+| `usage` | Spend per user, and spend outside personal roles. Exits 2 when it finds untracked spend |
+| `uninstall` | Removes the account setup. Refuses while users remain |
+
+`bedrock`, for engineers:
+
+| Command | What it does |
+| --- | --- |
+| `setup` | Writes the `bedrock` profile for your personal role in `~/.aws/config`, then runs `doctor` |
+| `doctor` | Checks your SSO sign-in, the `bedrock` profile, your personal role and a model call |
+| `claude` | Tests Claude Code with the `bedrock` profile and prints the settings to use. Changes no Claude settings |
+
+Both CLIs exit with 0 when everything is fine, 1 on an error, and 2 when they ran but found a
+problem. Run `<command> --help` for the flags. The [admin guide](admin-guide.md#commands) and
+[user guide](user-guide.md#commands) link each command to its section.
 
 ## Installation
 
