@@ -106,7 +106,7 @@ func (a *App) usage(ctx context.Context, f usageFlags, email string) error {
 	if err != nil {
 		return err
 	}
-	s3c := bucketClient(ctx, c, cfg.CostExport.Bucket)
+	s3c := c.BucketS3(ctx, cfg.CostExport.Bucket)
 	src := &usage.S3Source{S3: s3c, Bucket: cfg.CostExport.Bucket, Prefix: cfg.ExportPrefix()}
 
 	var reports []usage.MonthReport
@@ -247,21 +247,4 @@ func cfgName(cfg *config.Config) string {
 		return cfg.Path
 	}
 	return "bedrock.yaml"
-}
-
-// bucketClient returns an S3 client for the bucket's region (the bucket may not be in the Bedrock
-// region).
-func bucketClient(ctx context.Context, c *awsx.Clients, bucket string) *s3.Client {
-	loc, err := c.S3.GetBucketLocation(ctx, &s3.GetBucketLocationInput{Bucket: aws.String(bucket)})
-	if err != nil {
-		return c.S3
-	}
-	region := string(loc.LocationConstraint)
-	if region == "" {
-		region = "us-east-1"
-	}
-	if region == c.Region {
-		return c.S3
-	}
-	return s3.NewFromConfig(c.Cfg, awsx.QuietS3, func(o *s3.Options) { o.Region = region })
 }

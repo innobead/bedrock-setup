@@ -105,6 +105,43 @@ func FromConfig(cfg aws.Config) *Clients {
 	}
 }
 
+// BucketRegion returns the region of bucket and whether it exists.
+func (c *Clients) BucketRegion(ctx context.Context, bucket string) (string, bool, error) {
+	loc, err := c.S3.GetBucketLocation(ctx, &s3.GetBucketLocationInput{Bucket: aws.String(bucket)})
+	if IsNotFound(err) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	switch region := string(loc.LocationConstraint); region {
+	case "":
+		return "us-east-1", true, nil
+	case "EU":
+		return "eu-west-1", true, nil
+	default:
+		return region, true, nil
+	}
+}
+
+// S3In returns an S3 client for region.
+func (c *Clients) S3In(region string) *s3.Client {
+	if region == "" || region == c.Region {
+		return c.S3
+	}
+	return s3.NewFromConfig(c.Cfg, QuietS3, func(o *s3.Options) { o.Region = region })
+}
+
+// BucketS3 returns an S3 client for the bucket's region, or the default client when the region
+// can't be read.
+func (c *Clients) BucketS3(ctx context.Context, bucket string) *s3.Client {
+	region, _, err := c.BucketRegion(ctx, bucket)
+	if err != nil {
+		return c.S3
+	}
+	return c.S3In(region)
+}
+
 // ErrorCode returns the AWS error code of err, or "".
 func ErrorCode(err error) string {
 	var ae smithy.APIError

@@ -42,33 +42,34 @@ func (e *Env) costExport(ctx context.Context) ([]*plan.Item, error) {
 	return []*plan.Item{b, x}, nil
 }
 
-// BucketID returns the bucket's bedrock-admin:id and whether the bucket exists.
-func BucketID(ctx context.Context, c *s3.Client, bucket string) (string, bool, error) {
-	if _, err := c.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(bucket)}); err != nil {
-		if awsx.IsNotFound(err) {
-			return "", false, nil
-		}
-		return "", false, fmt.Errorf("checking bucket %s: %w", bucket, err)
+// BucketID returns the bucket's bedrock-admin:id, its region and whether the bucket exists.
+func BucketID(ctx context.Context, c *awsx.Clients, bucket string) (id, region string, exists bool, err error) {
+	region, exists, err = c.BucketRegion(ctx, bucket)
+	if err != nil {
+		return "", "", false, fmt.Errorf("checking bucket %s: %w", bucket, err)
 	}
-	t, err := c.GetBucketTagging(ctx, &s3.GetBucketTaggingInput{Bucket: aws.String(bucket)})
+	if !exists {
+		return "", "", false, nil
+	}
+	t, err := c.S3In(region).GetBucketTagging(ctx, &s3.GetBucketTaggingInput{Bucket: aws.String(bucket)})
 	if err != nil {
 		if awsx.IsNotFound(err) {
-			return "", true, nil
+			return "", region, true, nil
 		}
-		return "", true, fmt.Errorf("reading tags of bucket %s: %w", bucket, err)
+		return "", region, true, fmt.Errorf("reading tags of bucket %s: %w", bucket, err)
 	}
 	for _, tag := range t.TagSet {
 		if aws.ToString(tag.Key) == policy.IDTag {
-			return aws.ToString(tag.Value), true, nil
+			return aws.ToString(tag.Value), region, true, nil
 		}
 	}
-	return "", true, nil
+	return "", region, true, nil
 }
 
 func (e *Env) bucket(ctx context.Context) (*plan.Item, error) {
 	bucket := e.Cfg.CostExport.Bucket
 	it := e.item("1.1", "cost export bucket "+bucket)
-	id, exists, err := BucketID(ctx, e.C.S3, bucket)
+	id, region, exists, err := BucketID(ctx, e.C, bucket)
 	if err != nil {
 		if awsx.ErrorCode(err) == "Forbidden" || awsx.IsAccessDenied(err) {
 			it.Op, it.Status = plan.Conflict, "the name is taken by a bucket you can't read (another account?)"
@@ -90,6 +91,12 @@ func (e *Env) bucket(ctx context.Context) (*plan.Item, error) {
 			}
 			return e.fixBucket(ctx, bucket, pol, true, true, true)
 		}
+		return it, nil
+	}
+	if region != e.Cfg.Region {
+		it.Op = plan.Conflict
+		it.Status = fmt.Sprintf("exists in %s, but region is %s (managed by %q); delete the bucket or set cost_export.bucket to another name",
+			region, e.Cfg.Region, id)
 		return it, nil
 	}
 	if !e.owned(it, id) {

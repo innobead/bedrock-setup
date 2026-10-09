@@ -181,7 +181,7 @@ func (a *App) exportData(ctx context.Context, cfg *config.Config, c *awsx.Client
 	prefix := cfg.ExportPrefix() + "/data/"
 	var newest time.Time
 	var keys []string
-	p := s3.NewListObjectsV2Paginator(bucketClient(ctx, c, cfg.CostExport.Bucket), &s3.ListObjectsV2Input{Bucket: aws.String(cfg.CostExport.Bucket), Prefix: aws.String(prefix)})
+	p := s3.NewListObjectsV2Paginator(c.BucketS3(ctx, cfg.CostExport.Bucket), &s3.ListObjectsV2Input{Bucket: aws.String(cfg.CostExport.Bucket), Prefix: aws.String(prefix)})
 	for p.HasMorePages() {
 		r, err := p.NextPage(ctx)
 		if err != nil {

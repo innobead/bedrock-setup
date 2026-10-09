@@ -117,7 +117,7 @@ func (e *Env) Uninstall(ctx context.Context, deleteData bool) ([]*plan.Item, err
 		missing("1.1", "cost export "+e.Cfg.CostExport.Name)
 	}
 	bucket := e.Cfg.CostExport.Bucket
-	if id, ok, err := BucketID(ctx, e.C.S3, bucket); err != nil {
+	if id, region, ok, err := BucketID(ctx, e.C, bucket); err != nil {
 		return nil, err
 	} else if !ok {
 		missing("1.1", "cost export bucket "+bucket)
@@ -126,7 +126,7 @@ func (e *Env) Uninstall(ctx context.Context, deleteData bool) ([]*plan.Item, err
 		it.Op, it.Status = plan.Info, "kept (billing history and snapshots; --delete-data removes it)"
 		out = append(out, it)
 	} else {
-		del("1.1", "cost export bucket "+bucket, id, func(ctx context.Context) error { return EmptyAndDeleteBucket(ctx, e.C.S3, bucket) })
+		del("1.1", "cost export bucket "+bucket, id, func(ctx context.Context) error { return EmptyAndDeleteBucket(ctx, e.C.S3In(region), bucket) })
 	}
 	return out, nil
 }
