@@ -32,6 +32,7 @@ Each step starts with the commands to run. Click the folded sections for sample 
 First-time setup of an account:
 
 ```bash
+aws configure sso --profile bedrock-admin         # once: pick the account and your admin permission set
 aws sso login --profile bedrock-admin
 bedrock-admin configure --profile bedrock-admin   # write bedrock.yaml (step 2)
 #   ...add your users under users: in bedrock.yaml
@@ -119,10 +120,17 @@ bedrock-admin build has no Lambda code"). Use a release binary, or clone the rep
 
 ### Check
 
+Create an AWS CLI profile for your admin permission set once, then sign in and check:
+
 ```bash
+aws configure sso --profile bedrock-admin   # once; skip if you already have a profile
 aws sso login --profile bedrock-admin
 bedrock-admin doctor --profile bedrock-admin
 ```
+
+`aws configure sso` asks for your SSO start URL and region, opens the browser, then lets you pick the
+account and your admin permission set. `bedrock-admin` is only a suggested name: any profile for the
+admin permission set works, so use its name in place of `bedrock-admin` after `--profile`.
 
 `doctor` prints `ok` or `FAIL` per check, with the fix under each failure, and exits 2 when one
 failed. Before you have a `bedrock.yaml` it stops at the first check and tells you to run
