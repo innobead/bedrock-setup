@@ -132,3 +132,14 @@ func TestUsageMonths(t *testing.T) {
 		t.Fatalf("code %d %s", code, errs)
 	}
 }
+
+func TestShortAWSError(t *testing.T) {
+	in := "creating bucket b: operation error S3: CreateBucket, https response error StatusCode: 409, RequestID: R1, HostID: H/1=, api error OperationAborted: try again."
+	if got, want := shortAWSError(in), "creating bucket b: OperationAborted: try again."; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	in = "creating cost export x: operation error BCM Data Exports: CreateExport, https response error StatusCode: 400, RequestID: 3c, ValidationException: bad"
+	if got, want := shortAWSError(in), "creating cost export x: ValidationException: bad"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}

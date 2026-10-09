@@ -2,8 +2,8 @@ package admincli
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -151,6 +151,13 @@ Exit 2 when something is still pending afterwards (for example Step 1.7, which n
 	return cmd
 }
 
+// awsNoise matches the SDK's request details in an error, such as
+// "operation error S3: CreateBucket, https response error StatusCode: 409, RequestID: X, HostID: Y, api error ".
+var awsNoise = regexp.MustCompile(`operation error [^,]+, https response error StatusCode: \d+, RequestID: [^,]*,( HostID: [^,]*,)? (api error )?`)
+
+// shortAWSError drops the request details from an AWS SDK error; --json keeps the full text.
+func shortAWSError(s string) string { return awsNoise.ReplaceAllString(s, "") }
+
 func itemLabel(it *plan.Item) string {
 	if it.Step != "" {
 		return "Step " + it.Step + " " + it.Target
@@ -160,7 +167,8 @@ func itemLabel(it *plan.Item) string {
 
 func (a *App) apply(ctx context.Context, p *plan.Plan) error {
 	out := ApplyJSON{Applied: []ApplyResult{}, Pending: []*plan.Item{}, SetupCommands: []SetupCommand{}}
-	var failed []string
+	type failure struct{ label, err string }
+	var failed []failure
 	counts := map[plan.Op]int{}
 	accountFailed := false
 	for _, it := range p.Items {
@@ -183,9 +191,9 @@ func (a *App) apply(ctx context.Context, p *plan.Plan) error {
 		r := ApplyResult{Section: it.Section, Step: it.Step, Target: it.Target, Op: it.Op, Details: it.Details}
 		if err := it.Apply(ctx); err != nil {
 			r.Error = err.Error()
-			failed = append(failed, label+": "+err.Error())
+			failed = append(failed, failure{label, shortAWSError(err.Error())})
 			if !a.JSON {
-				_, _ = fmt.Fprintf(a.Err, "  failed: %v\n", err)
+				_, _ = fmt.Fprintf(a.Err, "    failed: %s\n", shortAWSError(err.Error()))
 			}
 			if it.Section == "account" {
 				accountFailed = true
@@ -209,9 +217,12 @@ func (a *App) apply(ctx context.Context, p *plan.Plan) error {
 			parts = append(parts, fmt.Sprintf("%d %s", n, c.text))
 		}
 	}
-	if len(parts) == 0 {
+	switch {
+	case len(parts) == 0 && len(failed) > 0:
+		out.Summary = "Nothing changed."
+	case len(parts) == 0:
 		out.Summary = "Nothing to change."
-	} else {
+	default:
 		out.Summary = "Done: " + strings.Join(parts, ", ") + "."
 	}
 	if len(failed) > 0 {
@@ -226,8 +237,17 @@ func (a *App) apply(ctx context.Context, p *plan.Plan) error {
 		}
 	} else {
 		a.printf("\n%s\n", out.Summary)
-		for _, it := range out.Pending {
-			a.printf("  pending: %s: %s\n", itemLabel(it), it.Status)
+		if len(failed) > 0 {
+			a.printf("\nFailed:\n")
+			for _, f := range failed {
+				a.printf("  %s\n    %s\n", f.label, f.err)
+			}
+		}
+		if len(out.Pending) > 0 {
+			a.printf("\nPending:\n")
+			for _, it := range out.Pending {
+				a.printf("  %s\n    %s\n", itemLabel(it), it.Status)
+			}
 		}
 		if len(out.SetupCommands) > 0 {
 			a.printf("\nSend each new user their setup command (after aws sso login):\n")
@@ -237,7 +257,11 @@ func (a *App) apply(ctx context.Context, p *plan.Plan) error {
 		}
 	}
 	if len(failed) > 0 {
-		return &cli.ExitError{Code: cli.Error, Err: errors.New(strings.Join(failed, "\n  "))}
+		if a.JSON {
+			return cli.Exit(cli.Error)
+		}
+		_, _ = fmt.Fprintln(a.Err)
+		return &cli.ExitError{Code: cli.Error, Err: fmt.Errorf("%d failed; run apply again after fixing the cause", len(failed))}
 	}
 	if len(out.Pending) > 0 {
 		return cli.Exit(cli.Problem)

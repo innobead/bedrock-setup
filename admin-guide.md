@@ -467,7 +467,9 @@ Plan: 11 to create, 1 needs org admin.
 <summary>More about apply</summary>
 
 `apply` creates what is missing and fixes what differs, so running it again is safe. It ends with a
-summary such as `Done: 11 created. 1 still pending.`
+summary such as `Done: 11 created. 1 still pending.`, then a `Failed:` and a `Pending:` list with
+the reason under each item. If a step fails, fix the cause and run `apply` again; users wait until
+the account setup succeeds.
 
 The `bedrock setup` command it prints has `--region` when your profile's region differs from the file's region, and
 `--role-arn` when the user has a custom `name:`. Users then follow the [user guide](user-guide.md).

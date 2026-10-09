@@ -291,8 +291,17 @@ class BedrockE2E:
         try:
             d = json.loads(stdout)
         except ValueError:
-            pending = [l for l in stdout.splitlines() if l.strip().startswith("pending:")]
-            return bool(pending) and all("needs org admin" in l for l in pending)
+            # Text output: a "Pending:" section of "  <label>" lines, each followed by "    <reason>".
+            lines = stdout.splitlines()
+            if "Pending:" not in lines:
+                return False
+            reasons = []
+            for l in lines[lines.index("Pending:") + 1:]:
+                if not l.strip() or not l.startswith("  "):
+                    break
+                if l.startswith("    "):
+                    reasons.append(l)
+            return bool(reasons) and all("needs org admin" in l for l in reasons)
         pending = d.get("pending") or [i for i in d.get("items", []) if i.get("op") in PENDING_OPS]
         return bool(pending) and all(i.get("op") == "needs-org-admin" for i in pending)
 
