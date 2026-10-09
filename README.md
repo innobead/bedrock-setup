@@ -1,51 +1,21 @@
 # Amazon Bedrock: per-person budgets and automatic pausing
 
-People use Claude through Amazon Bedrock with their SSO login. Each user has a personal
-role and a monthly budget. When someone reaches their limit, only that person is paused. Everyone is
-re-armed on the 1st of the month.
+Let people use Claude through Amazon Bedrock with their SSO login, with a monthly budget per
+person. When someone reaches their limit, only that person is paused, and everyone is re-armed on
+the 1st of the month.
 
 Two command-line tools do the work:
 
-- `bedrock-admin`, for the account admin. It sets up the account and manages users from one file,
+- `bedrock-admin`, for the account admin: sets up the AWS account and manages users from one file,
   `bedrock.yaml`.
-- `bedrock`, for users. It sets up the AWS profile of their personal role and checks it.
-
-## Contents
-
-- [Which document do I need?](#which-document-do-i-need)
-- [Getting started](#getting-started)
-- [How it works](#how-it-works)
-- [Commands](#commands)
-- [Installation](#installation)
-- [Repository layout](#repository-layout)
-- [Development](#development)
-
-## Which document do I need?
-
-| You are | Read |
-| --- | --- |
-| A user who wants to use Bedrock or Claude Code | [User guide](user-guide.md) |
-| The admin of an AWS account: you set up the account and manage users | [Admin guide](admin-guide.md) |
-| Reviewing how and why it works (IT, security, finance) | [Design](design.md) |
-| Running the end-to-end tests | [tests/e2e/README.md](tests/e2e/README.md) |
-
-## Getting started
-
-Users can't start until the admin has run steps 1 to 3.
-
-| Step | Who | What | Guide |
-| --- | --- | --- | --- |
-| 1 | Admin | Install `bedrock-admin`, sign in, run `bedrock-admin doctor` | [Admin guide, step 1](admin-guide.md#1-install-and-check-your-environment) |
-| 2 | Admin | Write `bedrock.yaml` with `bedrock-admin configure` | [Admin guide, step 2](admin-guide.md#2-create-bedrockyaml) |
-| 3 | Admin | `bedrock-admin plan`, then `bedrock-admin apply`: account setup (Steps 1.1–1.7) and users | [Admin guide, step 3](admin-guide.md#3-set-up-the-account-plan-then-apply) |
-| 4 | Admin | Onboard users: add them to `users:` in `bedrock.yaml`, then `apply`, and send each one the command `apply` prints | [Admin guide, step 4](admin-guide.md#4-day-to-day-changes-are-file-edits) |
-| 5 | User | `aws sso login`, `bedrock setup`, then `bedrock claude` (tests Claude Code, prints its settings) | [User guide](user-guide.md) |
-| 6 | Admin | Monthly: `bedrock-admin usage` to see spend and calls outside personal roles | [Admin guide, step 7](admin-guide.md#7-read-spend) |
-
-Billing data runs behind. The first cost export arrives within 24 hours of the first `apply`, and
-a user's spend shows up in their budget 3 to 16 hours after the calls.
+- `bedrock`, for users: sets up the AWS profile of their personal role and checks it.
 
 ## How it works
+
+- Each user gets a personal IAM role that can only call Claude models, tagged with their SSO email.
+- AWS bills each Bedrock call with that tag, and an AWS Budget per user tracks it.
+- At the limit, the budget attaches a deny policy to that user's role. A monthly Lambda re-arms it.
+- `bedrock-admin apply` creates all of this from `bedrock.yaml`.
 
 ```
  User (SSO login)
@@ -66,8 +36,28 @@ a user's spend shows up in their budget 3 to 16 hours after the calls.
                   saves a snapshot, then re-arms every pause action
 ```
 
-`bedrock-admin apply` creates all of this from `bedrock.yaml`, including the Lambda, which is built
-into the `bedrock-admin` binary.
+## Quick start
+
+Admin, once per account ([admin guide](admin-guide.md)):
+
+```bash
+bedrock-admin doctor                 # check your credentials and permissions
+bedrock-admin configure              # write bedrock.yaml
+#   ...add users under users: in bedrock.yaml
+bedrock-admin plan                   # see what will change
+bedrock-admin apply                  # set up the account and the users
+```
+
+Each user, after the admin has onboarded them ([user guide](user-guide.md)):
+
+```bash
+aws sso login                        # or: aws login
+bedrock setup                        # write the bedrock profile and check it
+bedrock claude                       # test Claude Code, print its settings
+```
+
+Download both CLIs from the GitHub release ([admin guide](admin-guide.md#install),
+[user guide](user-guide.md#before-you-start)).
 
 ## Commands
 
@@ -94,79 +84,14 @@ into the `bedrock-admin` binary.
 | `claude` | Tests Claude Code with the `bedrock` profile and prints the settings to use. Changes no Claude settings |
 
 Both CLIs exit with 0 when everything is fine, 1 on an error, and 2 when they ran but found a
-problem. Run `<command> --help` for the flags. The [admin guide](admin-guide.md#commands) and
-[user guide](user-guide.md#commands) link each command to its section.
+problem. Run `<command> --help` for the flags.
 
-## Installation
+## Documents
 
-Each release on GitHub has archives of both CLIs for macOS, Linux and Windows, on amd64 and arm64,
-built by GoReleaser:
-
-| File | Contents |
+| You are | Read |
 | --- | --- |
-| `bedrock-admin_<version>_<os>_<arch>.tar.gz` | `bedrock-admin` (`.zip` on Windows) |
-| `bedrock_<version>_<os>_<arch>.tar.gz` | `bedrock` (`.zip` on Windows) |
-| `checksums.txt` | SHA-256 of every archive |
-
-`<os>` is `darwin`, `linux` or `windows`, and `<arch>` is `amd64` or `arm64`. Unpack the archive
-and put the binary on your `PATH`.
-
-With Go installed, you can also build from source:
-
-```bash
-go install github.com/SUSE/high-impact-ai-initiative/cmd/bedrock@latest
-go install github.com/SUSE/high-impact-ai-initiative/cmd/bedrock-admin@latest
-```
-
-A `bedrock-admin` built by `go install` has no monthly Lambda inside, because the Lambda package is
-generated at build time and not committed. `plan` then reports Step 1.4 as a conflict ("this
-bedrock-admin build has no Lambda code"). Use a release binary, or clone the repository and run
-`make build`.
-
-Check the install with `bedrock-admin --version` and `bedrock --version`.
-
-## Repository layout
-
-| Path | What it is |
-| --- | --- |
-| [`user-guide.md`](user-guide.md) | User setup, troubleshooting, what happens when you're paused |
-| [`admin-guide.md`](admin-guide.md) | Account setup, managing users, pauses, spend, cheat sheet |
-| [`design.md`](design.md) | How and why it works: the model, each component, security, limits, testing, open items |
-| `cmd/bedrock-admin/` | Admin CLI |
-| `cmd/bedrock/` | User CLI |
-| `cmd/monthly-unpause/` | The monthly Lambda (`provided.al2023`), embedded in `bedrock-admin` |
-| `internal/` | Shared packages: config, plan and apply, account steps, users, pause, usage (Parquet reader), the user CLI |
-| `tests/e2e/` | Robot Framework suites that run the real binaries against a real AWS account, by hand. See [tests/e2e/README.md](tests/e2e/README.md). |
-| `tests/fixtures/` | Synthetic cost export Parquet files and a snapshot, used by the unit tests and the `usage` suite |
-| `poc/` | Proof-of-concept files from the original tests. Kept for reference only. |
-| `.github/workflows/` | `ci.yml` (vet, lint, unit tests) and `release.yml` (GoReleaser on a `v*` tag) |
-
-## Development
-
-You need Go (the version in `go.mod`) and, for linting, `golangci-lint`.
-
-| Command | Does |
-| --- | --- |
-| `make` | `generate`, `vet`, `lint`, `test` and `build` |
-| `make generate` | `go generate ./...`: builds the monthly Lambda package that `bedrock-admin` embeds |
-| `make build` | Builds `bin/bedrock-admin` and `bin/bedrock` |
-| `make test` | `go test ./...` |
-| `make vet` | `go vet ./...` |
-| `make lint` | `golangci-lint run ./...` |
-| `make e2e SUITE=<suite>` | `tests/e2e/run.sh <suite>` |
-| `make clean` | Removes `bin/`, `dist/` and the generated Lambda package |
-
-Run `make generate` once before `go vet`, `go test` or `go build` in a fresh clone. Without it,
-the build works, but `bedrock-admin` has no Lambda to deploy.
-
-CI (`.github/workflows/ci.yml`) runs `go generate`, `go vet`, `golangci-lint` and
-`go test -race ./...` on pull requests and on `main`. It does not run the end-to-end tests. Run
-them by hand with `tests/e2e/run.sh`, as described in [tests/e2e/README.md](tests/e2e/README.md).
-Every suite except `cli` uses a real AWS account.
-
-To release, push a `v*` tag. `.github/workflows/release.yml` runs GoReleaser
-(`.goreleaser.yaml`), which builds both CLIs and attaches the archives and checksums to the GitHub
-release.
-
-> Account IDs, names, emails, bucket names and resource IDs in this repository are placeholders
-> (for example account `111122223333` and `achen@example.com`). Replace them with your own values.
+| A user who wants to use the Bedrock inference provider in code agents | [User guide](user-guide.md) |
+| The admin of an AWS account: you set up the account and manage users | [Admin guide](admin-guide.md) |
+| Reviewing how and why this solution works | [Design](design.md) |
+| Building, testing, or releasing the CLIs | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Running the end-to-end tests | [tests/e2e/README.md](tests/e2e/README.md) |

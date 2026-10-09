@@ -9,6 +9,7 @@ minutes.
 
 ## Contents
 
+- [Quick start](#quick-start)
 - [How it works](#how-it-works)
 - [Why use your personal role](#why-use-your-personal-role)
 - [Commands](#commands)
@@ -21,6 +22,17 @@ minutes.
 - [If something goes wrong](#if-something-goes-wrong)
 - [When you're paused](#when-youre-paused)
 
+## Quick start
+
+```bash
+aws sso login --profile <your-sso-profile>   # or: aws login
+bedrock setup                                # the command your admin sent you
+bedrock claude                               # test Claude Code, print the settings to add
+```
+
+Then add the printed settings to Claude Code (or the Claude desktop app). Each step is explained
+below; click the folded sections for sample output and details.
+
 ## How it works
 
 - You use Bedrock through a personal AWS role that only you can use, from your SSO login.
@@ -30,6 +42,13 @@ minutes.
   you, or until the 1st of next month.
 
 ## Why use your personal role
+
+Calls through your personal role (the `bedrock` profile) count toward your budget and are capped.
+Calls from any other profile still show your email in the admin's report, but have no budget, no
+alert and no cap, and may be blocked.
+
+<details>
+<summary>Personal role compared with other profiles</summary>
 
 You can call Bedrock from other profiles, such as an `AWSAdministratorAccess` SSO login, but
 please don't. Those calls are not anonymous: billing still records your SSO email, and your admin
@@ -47,6 +66,8 @@ sees them in the monthly `usage` report. What you lose is everything else:
 Your admin may also block model calls from other SSO profiles. Then the personal role is the only
 way in.
 
+</details>
+
 ## Commands
 
 | Command | What it does | Section |
@@ -62,9 +83,8 @@ Exit codes: 0 ok, 1 error, 2 a check failed. Run `bedrock <command> --help` for 
 - You can sign in to the AWS account with SSO, and you have an SSO profile in `~/.aws/config`
   (from `aws configure sso`), or you sign in with `aws login`.
 - The AWS CLI v2 is installed.
-- The `bedrock` CLI is installed. Download it for your platform from the GitHub release (see
-  [Installation](README.md#installation)), or run
-  `go install github.com/SUSE/high-impact-ai-initiative/cmd/bedrock@latest`.
+- The `bedrock` CLI is installed: download it for your platform from the GitHub release, unpack it
+  and put it on your `PATH`. Or, with Go: `go install github.com/SUSE/high-impact-ai-initiative/cmd/bedrock@latest`.
 - Your admin has onboarded you. If your SSO email doesn't receive mail, give your admin your real
   mailbox address for the budget emails.
 
@@ -87,7 +107,11 @@ Run the command your admin sent you. Usually it is:
 bedrock setup
 ```
 
-`setup` writes a `[profile bedrock]` block in `~/.aws/config` (or `$AWS_CONFIG_FILE`):
+It writes a `[profile bedrock]` block in `~/.aws/config` (or `$AWS_CONFIG_FILE`) for your personal role, then runs
+`bedrock doctor`.
+
+<details>
+<summary>What it writes, and options</summary>
 
 ```ini
 [profile bedrock]
@@ -108,13 +132,19 @@ region = us-west-2
   `--sso-profile <profile>`.
 - `--profile-name` writes a profile with another name.
 
-Then it runs `bedrock doctor`.
+</details>
 
 ### Step 3. Check it
 
 ```bash
 bedrock doctor
 ```
+
+Every line should say `ok`, ending with `All checks passed.` If not, it prints the fix under the
+failed check; see [If something goes wrong](#if-something-goes-wrong).
+
+<details>
+<summary>Sample output and options</summary>
 
 ```
 ok    profile: bedrock in /Users/achen/.aws/config
@@ -132,10 +162,23 @@ By default it tests Claude Opus, Sonnet and Haiku 5.5 (`us.`/`eu.` inference pro
 another model with `--model <id>` (repeatable). `--json` prints the checks as JSON. It exits 2 when
 a check fails, and prints the fix under it. See [If something goes wrong](#if-something-goes-wrong).
 
+</details>
+
 ### Step 4. Set up Claude Code
 
-`bedrock claude` checks that Claude Code works with the `bedrock` profile, then prints the settings
-to add. It never writes your Claude Code settings: you add them yourself.
+```bash
+bedrock claude
+```
+
+It makes one test call with Claude Code and prints the settings to add, for Claude Code and for the
+Claude desktop app. It never changes your Claude settings: you add them yourself.
+
+- Your personal role can only call Claude models. For any other AWS command, use your SSO profile.
+- Credentials renew automatically while your SSO sign-in is valid.
+- To change the profile or region later, edit the settings or run `/setup-bedrock` again.
+
+<details>
+<summary>Sample output</summary>
 
 ```text
 $ bedrock claude
@@ -179,6 +222,11 @@ Claude desktop app (Settings, Amazon Bedrock):
                      us.anthropic.claude-haiku-5-5
 ```
 
+</details>
+
+<details>
+<summary>How the test works, and keeping models up to date</summary>
+
 The test runs `claude -p` once in a temporary, empty config folder (`CLAUDE_CONFIG_DIR`) with no
 tools, MCP servers, hooks or plugins, and removes it afterwards, so your own Claude Code settings and
 login are untouched. When it fails, it prints the fix and exits 2; the settings are printed anyway.
@@ -191,9 +239,7 @@ The model IDs are the standard defaults (Claude Opus, Sonnet and Haiku 5.5). You
 to keep up to date: if your admin announces other models, change the model IDs in your Claude Code
 settings and the desktop app's model list, and check one with `bedrock doctor --model <id>`.
 
-- Your personal role can only call Claude models. For any other AWS command, use your SSO profile.
-- Credentials renew automatically while your SSO sign-in is valid.
-- To change the profile or region later, edit the settings or run `/setup-bedrock` again.
+</details>
 
 ## If something goes wrong
 
