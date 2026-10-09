@@ -87,6 +87,9 @@ func (e *Env) bucket(ctx context.Context) (*plan.Item, error) {
 					LocationConstraint: stypes.BucketLocationConstraint(e.Cfg.Region)}
 			}
 			if _, err := e.C.S3.CreateBucket(ctx, in); err != nil {
+				if awsx.ErrorCode(err) == "OperationAborted" {
+					return fmt.Errorf("creating bucket %s: S3 is still releasing this name (deleted recently, maybe in another region); run apply again in a few minutes: %w", bucket, err)
+				}
 				return fmt.Errorf("creating bucket %s: %w", bucket, err)
 			}
 			return e.fixBucket(ctx, bucket, pol, true, true, true)

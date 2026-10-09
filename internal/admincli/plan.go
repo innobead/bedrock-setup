@@ -151,6 +151,13 @@ Exit 2 when something is still pending afterwards (for example Step 1.7, which n
 	return cmd
 }
 
+func itemLabel(it *plan.Item) string {
+	if it.Step != "" {
+		return "Step " + it.Step + " " + it.Target
+	}
+	return it.Target
+}
+
 func (a *App) apply(ctx context.Context, p *plan.Plan) error {
 	out := ApplyJSON{Applied: []ApplyResult{}, Pending: []*plan.Item{}, SetupCommands: []SetupCommand{}}
 	var failed []string
@@ -164,17 +171,14 @@ func (a *App) apply(ctx context.Context, p *plan.Plan) error {
 			continue
 		}
 		if accountFailed && it.Section == "users" {
+			it.Status = "not applied: the account setup failed; run apply again"
 			out.Pending = append(out.Pending, it)
 			continue
 		}
-		label := it.Target
-		if it.Step != "" {
-			label = "Step " + it.Step + " " + it.Target
-		}
+		label := itemLabel(it)
 		if !a.JSON {
 			// A change, so --quiet prints it too.
-			desc := strings.TrimSpace(strings.Join(append(append([]string{}, it.Details...), it.Status), " "))
-			_, _ = fmt.Fprintf(a.Err, "%s %s: %s\n", symbol(it.Op), label, desc)
+			_, _ = fmt.Fprintf(a.Err, "%s %s: %s\n", symbol(it.Op), label, it.Summary())
 		}
 		r := ApplyResult{Section: it.Section, Step: it.Step, Target: it.Target, Op: it.Op, Details: it.Details}
 		if err := it.Apply(ctx); err != nil {
@@ -223,7 +227,7 @@ func (a *App) apply(ctx context.Context, p *plan.Plan) error {
 	} else {
 		a.printf("\n%s\n", out.Summary)
 		for _, it := range out.Pending {
-			a.printf("  pending: %s %s: %s\n", it.Step, it.Target, it.Status)
+			a.printf("  pending: %s: %s\n", itemLabel(it), it.Status)
 		}
 		if len(out.SetupCommands) > 0 {
 			a.printf("\nSend each new user their setup command (after aws sso login):\n")

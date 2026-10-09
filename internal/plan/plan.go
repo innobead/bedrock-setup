@@ -113,16 +113,21 @@ func (p *Plan) Summary() string {
 	return "Plan: " + strings.Join(parts, ", ") + "."
 }
 
-func (it *Item) text() string {
-	var b strings.Builder
+// Summary is the item's one-line description: its details, else its status, else its op.
+func (it *Item) Summary() string {
 	switch {
 	case len(it.Details) > 0:
-		b.WriteString(strings.Join(it.Details, ", "))
+		return strings.Join(it.Details, ", ")
 	case it.Status != "":
-		b.WriteString(it.Status)
+		return it.Status
 	default:
-		b.WriteString(string(it.Op))
+		return string(it.Op)
 	}
+}
+
+func (it *Item) text() string {
+	var b strings.Builder
+	b.WriteString(it.Summary())
 	if len(it.Notes) > 0 {
 		b.WriteString("  (" + strings.Join(it.Notes, "; ") + ")")
 	}
