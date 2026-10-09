@@ -74,12 +74,27 @@ and snapshots, is kept unless --delete-data is given. It asks first unless --yes
 				if !cli.IsTerminal(a.In) {
 					return errors.New("uninstall needs --yes when not run from a terminal")
 				}
-				ok, err := cli.NewPrompter(a.In, a.Err).Confirm("Remove these?")
+				pr := cli.NewPrompter(a.In, a.Err)
+				ok, err := pr.Confirm("Remove these?")
 				if err != nil {
 					return err
 				}
 				if !ok {
 					return errors.New("cancelled")
+				}
+				for _, it := range items {
+					if it.Apply == nil || !account.IsBucket(it) {
+						continue
+					}
+					_, _ = fmt.Fprintf(a.Err, "\nThe %s %s.\n", it.Target, account.BucketDeleteNote)
+					ok, err := pr.Confirm("Delete the bucket too?")
+					if err != nil {
+						return err
+					}
+					if !ok {
+						it.Apply = nil
+						a.info("Keeping %s.\n", it.Target)
+					}
 				}
 			}
 			for _, it := range items {
@@ -95,7 +110,7 @@ and snapshots, is kept unless --delete-data is given. It asks first unless --yes
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&deleteData, "delete-data", false, "also delete the cost export bucket (billing history and snapshots)")
+	cmd.Flags().BoolVar(&deleteData, "delete-data", false, "also delete the cost export bucket (billing history and snapshots); S3 may not let you reuse its name right away")
 	return cmd
 }
 

@@ -826,7 +826,10 @@ Offboard everyone first: set `users: []`, then `bedrock-admin apply --yes`. `uni
 prints what it would remove and changes nothing.
 
 It keeps the cost export bucket, with the billing history and the snapshots. Add `--delete-data`
-to delete it too.
+to delete it too. Do that only if you won't set up again soon: S3 bucket names are global, so after
+deleting, S3 may hold the name for a while (`apply` then fails with `OperationAborted`), and another
+AWS account could claim it. In a terminal, `uninstall` asks again before deleting the bucket;
+`--yes --delete-data` deletes it without asking.
 
 </details>
 

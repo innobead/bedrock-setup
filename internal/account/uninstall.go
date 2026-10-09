@@ -3,6 +3,7 @@ package account
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bcmdataexports"
@@ -17,6 +18,12 @@ import (
 	"github.com/SUSE/high-impact-ai-initiative/internal/plan"
 	"github.com/SUSE/high-impact-ai-initiative/internal/policy"
 )
+
+// BucketDeleteNote warns that a deleted bucket name can't be reused right away.
+const BucketDeleteNote = "deletes the billing history; S3 may hold the name for a while, so apply can't recreate it right away, and another AWS account could claim it"
+
+// IsBucket reports whether it is the cost export bucket.
+func IsBucket(it *plan.Item) bool { return strings.HasPrefix(it.Target, "cost export bucket ") }
 
 // UserRoles lists the roles under /bedrock-users/ (any id).
 func UserRoles(ctx context.Context, c *iam.Client) ([]string, error) {
@@ -127,6 +134,9 @@ func (e *Env) Uninstall(ctx context.Context, deleteData bool) ([]*plan.Item, err
 		out = append(out, it)
 	} else {
 		del("1.1", "cost export bucket "+bucket, id, func(ctx context.Context) error { return EmptyAndDeleteBucket(ctx, e.C.S3In(region), bucket) })
+		if it := out[len(out)-1]; it.Op == plan.Delete {
+			it.Notes = append(it.Notes, BucketDeleteNote)
+		}
 	}
 	return out, nil
 }
